@@ -46,7 +46,11 @@
             body { background: white !important; color: black !important; }
             .no-print { display: none !important; }
             .print-view { display: block !important; }
-            tr.zebra-row { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            /* Boxed table for print */
+            table.print-bordered { border-collapse: collapse; width: 100%; }
+            table.print-bordered th, table.print-bordered td { border: 1px solid #000; padding: 6px; }
+            /* Ensure colors print */
+            .print-color-exact { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
 </head>
@@ -62,7 +66,7 @@
             Square, Palette, Type, Calendar, Archive, RefreshCcw, Layout, Box, Database, 
             Download, Upload, Camera, Loader2, SearchCode, ChevronRight, ChevronDown, Folder, 
             FileText, Library, AlertTriangle, ShieldCheck, FlipHorizontal, Image as ImageIcon,
-            PenTool, Sparkles, Filter, ToggleLeft, ToggleRight, Layers, MoreHorizontal, Info
+            PenTool, Sparkles, Filter, ToggleLeft, ToggleRight, Layers, MoreHorizontal, Info, Briefcase
         } from 'lucide-react';
         
         import { initializeApp } from 'firebase/app';
@@ -90,14 +94,12 @@
 
         // --- DATA ---
         const INITIAL_BATTERY_DB = [
-            // CSB
             { manufacturer: "CSB", model: "HRL 1234W", type: "Lead-Acid", weight: 5.7, ah: 9, life: "5-8 Years" },
             { manufacturer: "CSB", model: "GP 1272", type: "Lead-Acid", weight: 5.3, ah: 7.2, life: "3-5 Years" },
             { manufacturer: "CSB", model: "GP 12120", type: "Lead-Acid", weight: 8.1, ah: 12, life: "3-5 Years" },
             { manufacturer: "CSB", model: "GP 12170", type: "Lead-Acid", weight: 12.1, ah: 17, life: "3-5 Years" },
             { manufacturer: "CSB", model: "HRL 12500W", type: "Lead-Acid", weight: 97, ah: 125, life: "8-10 Years" },
             
-            // Universal
             { manufacturer: "Universal", model: "UB1223 (2.3Ah)", type: "Lead-Acid", weight: 1.6, ah: 2.3, life: "3-5 Years" },
             { manufacturer: "Universal", model: "UB1250 (5Ah)", type: "Lead-Acid", weight: 3.5, ah: 5, life: "3-5 Years" },
             { manufacturer: "Universal", model: "UB1270 (7Ah)", type: "Lead-Acid", weight: 4.8, ah: 7, life: "3-5 Years" },
@@ -107,17 +109,14 @@
             { manufacturer: "Universal", model: "UB12120 (12Ah)", type: "Lead-Acid", weight: 8.2, ah: 12, life: "3-5 Years" },
             { manufacturer: "Universal", model: "UB12180 (18Ah)", type: "Lead-Acid", weight: 11.6, ah: 18, life: "3-5 Years" },
             
-            // Power-Sonic
             { manufacturer: "Power-Sonic", model: "PS-1270", type: "Lead-Acid", weight: 4.8, ah: 7, life: "3-5 Years" },
             { manufacturer: "Power-Sonic", model: "PS-1290", type: "Lead-Acid", weight: 5.1, ah: 9, life: "3-5 Years" },
             
-            // APC / Schneider
             { manufacturer: "APC", model: "RBC2", type: "Lead-Acid", weight: 5.5, ah: 7, life: "3-5 Years" },
             { manufacturer: "APC", model: "RBC7", type: "Lead-Acid", weight: 24.5, ah: 18, life: "3-5 Years" },
             { manufacturer: "APC", model: "RBC12", type: "Lead-Acid", weight: 42.1, ah: 7, life: "3-5 Years" },
             { manufacturer: "APC", model: "RBC44", type: "Lead-Acid", weight: 76.2, ah: 5, life: "3-5 Years" },
             
-            // Enersys
             { manufacturer: "Enersys", model: "DataSafe 12HX205", type: "Lead-Acid", weight: 42, ah: 44, life: "10 Years" },
             { manufacturer: "Enersys", model: "DataSafe 12HX300", type: "Lead-Acid", weight: 60, ah: 71, life: "10 Years" },
             { manufacturer: "Enersys", model: "DataSafe 12HX330", type: "Lead-Acid", weight: 65, ah: 78, life: "10 Years" },
@@ -125,7 +124,6 @@
             { manufacturer: "Enersys", model: "DataSafe 12HX505", type: "Lead-Acid", weight: 104, ah: 115, life: "10 Years" },
             { manufacturer: "Enersys", model: "DataSafe 12HX540", type: "Lead-Acid", weight: 106, ah: 123, life: "10 Years" },
             
-            // C&D Technologies
             { manufacturer: "C&D", model: "UPS12-300MR", type: "Lead-Acid", weight: 58, ah: 78, life: "10 Years" },
             { manufacturer: "C&D", model: "UPS12-350MR", type: "Lead-Acid", weight: 68, ah: 90, life: "10 Years" },
             { manufacturer: "C&D", model: "UPS12-400MR", type: "Lead-Acid", weight: 76, ah: 102, life: "10 Years" },
@@ -133,33 +131,26 @@
             { manufacturer: "C&D", model: "UPS12-540MR", type: "Lead-Acid", weight: 105, ah: 148, life: "10 Years" },
             { manufacturer: "C&D", model: "JC 400 (Wet)", type: "Wet Cell", weight: 65, ah: 400, life: "20 Years" },
             
-            // Leoch
             { manufacturer: "Leoch", model: "LP12-7.0", type: "Lead-Acid", weight: 4.7, ah: 7, life: "3-5 Years" },
             { manufacturer: "Leoch", model: "LP12-9.0", type: "Lead-Acid", weight: 5.5, ah: 9, life: "3-5 Years" },
             { manufacturer: "Leoch", model: "XP12-300", type: "Lead-Acid", weight: 57, ah: 75, life: "10 Years" },
             { manufacturer: "Leoch", model: "XP12-400", type: "Lead-Acid", weight: 75, ah: 100, life: "10 Years" },
 
-            // Deka
             { manufacturer: "Deka", model: "12AVR100ET", type: "Lead-Acid", weight: 69, ah: 100, life: "10 Years" },
             { manufacturer: "Deka", model: "12AVR145ET", type: "Lead-Acid", weight: 104, ah: 145, life: "10 Years" },
             { manufacturer: "Deka", model: "12AVR170ET", type: "Lead-Acid", weight: 118, ah: 170, life: "10 Years" },
             
-            // Amstron
             { manufacturer: "Amstron", model: "AP-1270", type: "Lead-Acid", weight: 4.8, ah: 7, life: "3-5 Years" },
             { manufacturer: "Amstron", model: "AP-1290", type: "Lead-Acid", weight: 5.4, ah: 9, life: "3-5 Years" },
 
-            // Trojan
             { manufacturer: "Trojan", model: "T-105 (6V)", type: "Wet Cell", weight: 62, ah: 225, life: "5-7 Years" },
             { manufacturer: "Trojan", model: "L16P (6V)", type: "Wet Cell", weight: 115, ah: 360, life: "5-8 Years" },
             
-            // Tesla
             { manufacturer: "Tesla", model: "Powerwall 2", type: "Li-ion", weight: 251, ah: 0, life: "10-15 Years" },
             { manufacturer: "Tesla", model: "Powerwall 3", type: "Li-ion", weight: 287, ah: 0, life: "10-15 Years" },
             
-            // LG
             { manufacturer: "LG Chem", model: "RESU 10H", type: "Li-ion", weight: 214, ah: 63, life: "10 Years" },
             
-            // Enphase
             { manufacturer: "Enphase", model: "IQ Battery 10", type: "Li-ion", weight: 346, ah: 0, life: "10-15 Years" },
         ];
 
@@ -186,11 +177,11 @@
         };
 
         const StatusIcon = ({ date }) => {
-            if (!date) return <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-600"></div>;
+            if (!date) return <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-600 print-color-exact"></div>;
             const days = (new Date(date) - new Date()) / (1000 * 60 * 60 * 24);
-            if (days < 0) return <div className="w-3 h-3 rounded-full bg-red-500" title="Expired"></div>;
-            if (days < 60) return <div className="w-3 h-3 rounded-full bg-amber-500" title="Expiring Soon"></div>;
-            return <div className="w-3 h-3 rounded-full bg-emerald-500" title="Good"></div>;
+            if (days < 0) return <div className="w-3 h-3 rounded-full bg-red-500 border border-red-600 print-color-exact" title="Expired"></div>;
+            if (days < 60) return <div className="w-3 h-3 rounded-full bg-amber-500 border border-amber-600 print-color-exact" title="Expiring Soon"></div>;
+            return <div className="w-3 h-3 rounded-full bg-emerald-500 border border-emerald-600 print-color-exact" title="Good"></div>;
         };
 
         const formatDate = (dateStr) => {
@@ -210,7 +201,7 @@
             const [scanning, setScanning] = useState(false);
             const [searchingModel, setSearchingModel] = useState(false);
             const [addingLibItem, setAddingLibItem] = useState(false);
-            const [archiveGroupBy, setArchiveGroupBy] = useState('location'); 
+            const [archiveGroupBy, setArchiveGroupBy] = useState('jobName'); // 'jobName', 'location', 'manufacturer'
             
             // Data
             const [logs, setLogs] = useState([]);
@@ -249,16 +240,12 @@
                 }, { weight: 0, count: 0 });
             }, [logs]);
 
-            // Merge & Deduplicate Library: Smart Merge logic
             const fullLibrary = useMemo(() => {
-                // Map custom items by key
                 const customMap = new Map();
                 customLibrary.forEach(i => {
                     const key = ((i.manufacturer||"").trim() + (i.model||"").trim()).toLowerCase();
                     customMap.set(key, i);
                 });
-
-                // Start with built-ins, but skip if a custom override exists
                 const merged = [];
                 INITIAL_BATTERY_DB.forEach(initItem => {
                     const key = ((initItem.manufacturer||"").trim() + (initItem.model||"").trim()).toLowerCase();
@@ -266,21 +253,12 @@
                         merged.push(initItem);
                     }
                 });
-                
-                // Add all custom items
                 return [...merged, ...customLibrary].sort((a,b) => (a.manufacturer||'').localeCompare(b.manufacturer||''));
             }, [customLibrary]);
 
-            // Effects
-            useEffect(() => {
-                document.documentElement.classList.toggle('dark', isDarkMode);
-            }, [isDarkMode]);
-
-            useEffect(() => {
-                signInAnonymously(auth);
-                return onAuthStateChanged(auth, setUser);
-            }, []);
-
+            useEffect(() => { document.documentElement.classList.toggle('dark', isDarkMode); }, [isDarkMode]);
+            useEffect(() => { signInAnonymously(auth); return onAuthStateChanged(auth, setUser); }, []);
+            
             useEffect(() => {
                 if (!user) return;
                 const unsubLogs = onSnapshot(collection(db, 'recycling_logs'), s => setLogs(s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0))));
@@ -297,7 +275,6 @@
                 if(u > 0 && c > 0) setFormData(p => ({...p, totalWeight: (u*c).toFixed(1)}));
             }, [formData.unitWeight, formData.count]);
 
-            // Auto Expiry
             useEffect(() => {
                 if(formData.installDate && formData.expectedLife) {
                     const lifeStr = String(formData.expectedLife);
@@ -310,30 +287,18 @@
                 }
             }, [formData.installDate, formData.expectedLife]);
 
-            // Handlers
             const saveRecord = async (e) => {
                 e.preventDefault();
                 if (!user) return;
                 try {
                     const payload = { ...formData, weight: parseFloat(formData.totalWeight)||0, unitWeight: parseFloat(formData.unitWeight)||0, count: parseInt(formData.count)||0, dateStr: new Date().toLocaleDateString(), archived: false };
                     
-                    if(formData.location && !savedSources.includes(formData.location)) {
-                        await addDoc(collection(db, 'saved_sources'), {name: formData.location});
-                    }
+                    if(formData.location && !savedSources.includes(formData.location)) await addDoc(collection(db, 'saved_sources'), {name: formData.location});
                     
-                    // Auto-add to Library
                     const modelKey = ((formData.manufacturer||"").trim() + (formData.batteryModel||"").trim()).toLowerCase();
                     const exists = fullLibrary.some(b => ((b.manufacturer||"").trim() + (b.model||"").trim()).toLowerCase() === modelKey);
-                    
                     if (!exists && formData.batteryModel && formData.manufacturer) {
-                        await addDoc(collection(db, 'custom_library'), {
-                            manufacturer: formData.manufacturer,
-                            model: formData.batteryModel,
-                            type: formData.type,
-                            weight: parseFloat(formData.unitWeight)||0,
-                            ah: formData.ampHours,
-                            life: formData.expectedLife
-                        });
+                        await addDoc(collection(db, 'custom_library'), { manufacturer: formData.manufacturer, model: formData.batteryModel, type: formData.type, weight: parseFloat(formData.unitWeight)||0, ah: formData.ampHours, life: formData.expectedLife });
                     }
 
                     if(editingId) await updateDoc(doc(db, 'recycling_logs', editingId), payload);
@@ -345,6 +310,24 @@
                 } catch(err) { console.error(err); alert("Error saving. Check numeric fields."); }
             };
 
+            const completeJob = async () => {
+                if(selectedLogIds.size === 0) return;
+                const jobName = prompt("Enter Job/Log Name (e.g., Server Room B - Replacement)", `Service - ${new Date().toLocaleDateString()}`);
+                if(!jobName) return;
+                
+                const batch = writeBatch(db);
+                selectedLogIds.forEach(id => {
+                    batch.update(doc(db, 'recycling_logs', id), { 
+                        archived: true, 
+                        jobName: jobName, 
+                        jobDate: new Date().toISOString() 
+                    });
+                });
+                await batch.commit();
+                setSelectedLogIds(new Set());
+                alert(`Job "${jobName}" Created & Archived!`);
+            };
+
             const saveSettings = async () => {
                 if (!user) return;
                 await setDoc(doc(db, 'settings', 'global_config'), appSettings);
@@ -353,47 +336,24 @@
 
             const handleNewLibSubmit = async (e) => {
                 e.preventDefault();
-                const dataToSave = { 
-                    manufacturer: newLibData.manufacturer,
-                    model: newLibData.model,
-                    type: newLibData.type,
-                    weight: parseFloat(newLibData.weight)||0,
-                    ah: newLibData.ah,
-                    life: newLibData.life
-                };
-                if(newLibData.id) {
-                    await updateDoc(doc(db, 'custom_library', newLibData.id), dataToSave);
-                } else {
-                    await addDoc(collection(db, 'custom_library'), dataToSave);
-                }
+                const dataToSave = { manufacturer: newLibData.manufacturer, model: newLibData.model, type: newLibData.type, weight: parseFloat(newLibData.weight)||0, ah: newLibData.ah, life: newLibData.life };
+                if(newLibData.id) await updateDoc(doc(db, 'custom_library', newLibData.id), dataToSave);
+                else await addDoc(collection(db, 'custom_library'), dataToSave);
                 setAddingLibItem(false);
                 setNewLibData({ id: null, manufacturer: '', model: '', type: 'Lead-Acid', weight: '', ah: '', life: '' });
             };
 
             const handleEditLibItem = (e, item) => {
                 e.stopPropagation();
-                setNewLibData({
-                    id: item.id || null, 
-                    manufacturer: item.manufacturer || '',
-                    model: item.model || '',
-                    type: item.type || 'Lead-Acid',
-                    weight: String(item.weight || ''),
-                    ah: String(item.ah || ''),
-                    life: String(item.life || '')
-                });
+                setNewLibData({ id: item.id || null, manufacturer: item.manufacturer || '', model: item.model || '', type: item.type || 'Lead-Acid', weight: String(item.weight || ''), ah: String(item.ah || ''), life: String(item.life || '') });
                 setAddingLibItem(true);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             };
             
             const handleDeleteLibItem = async (e, item) => {
                 e.stopPropagation();
-                if (!item.id) {
-                    alert("Cannot delete built-in items. You can create a custom version to override it.");
-                    return;
-                }
-                if(confirm("Delete this library item?")) {
-                    await deleteDoc(doc(db, 'custom_library', item.id));
-                }
+                if (!item.id) { alert("Cannot delete built-in items."); return; }
+                if(confirm("Delete this library item?")) await deleteDoc(doc(db, 'custom_library', item.id));
             };
 
             const handleModelSearch = async (val) => {
@@ -416,10 +376,7 @@
                 const reader = new FileReader();
                 reader.onloadend = async () => {
                     try {
-                        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`, {
-                            method: 'POST', headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ contents: [{ parts: [{text: "Analyze battery label. Return JSON: manufacturer, model, type, weight (lbs), ah, life."}, {inlineData: {mimeType: file.type, data: reader.result.split(',')[1]}}] }] })
-                        });
+                        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ contents: [{ parts: [{text: "Analyze battery label. Return JSON: manufacturer, model, type, weight (lbs), ah, life."}, {inlineData: {mimeType: file.type, data: reader.result.split(',')[1]}}] }] }) });
                         const data = await res.json();
                         const json = JSON.parse(data.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/)[0]);
                         setFormData(p => ({...p, batteryModel: json.model||'', manufacturer: json.manufacturer||'', type: json.type||'Lead-Acid', unitWeight: String(json.weight||''), ampHours: String(json.ah||''), expectedLife: String(json.life||'')}));
@@ -433,10 +390,7 @@
                 if(!GEMINI_API_KEY || !formData.batteryModel) return;
                 setSearchingModel(true);
                 try {
-                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`, {
-                        method: 'POST', headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ contents: [{ parts: [{text: `Search specs for battery: ${formData.batteryModel}. Return JSON: manufacturer, type, weight (lbs), ah, life.`}] }] })
-                    });
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ contents: [{ parts: [{text: `Search specs for battery: ${formData.batteryModel}. Return JSON: manufacturer, type, weight (lbs), ah, life.`}] }] }) });
                     const data = await res.json();
                     const json = JSON.parse(data.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/)[0]);
                     setFormData(p => ({...p, manufacturer: json.manufacturer||p.manufacturer, type: json.type||p.type, unitWeight: String(json.weight||p.unitWeight), ampHours: String(json.ah||p.ampHours), expectedLife: String(json.life||p.expectedLife)}));
@@ -448,7 +402,9 @@
                 const groups = {};
                 data.filter(l => (l.location||'').toLowerCase().includes(dbSearch.toLowerCase()) || (l.batteryModel||'').toLowerCase().includes(dbSearch.toLowerCase()))
                     .forEach(l => {
-                        const k = l[groupBy] || 'Unknown';
+                        let k = 'Unknown';
+                        if (groupBy === 'jobName') k = l.jobName || 'Unassigned Logs';
+                        else k = l[groupBy] || 'Unknown';
                         if(!groups[k]) groups[k] = [];
                         groups[k].push(l);
                     });
@@ -472,33 +428,20 @@
 
             const toggleArchive = async (id, status) => {
                 if (!user) return;
-                try {
-                    await updateDoc(doc(db, 'recycling_logs', id), { archived: !status });
-                } catch (e) {
-                    console.error("Error toggling archive status:", e);
-                    alert("Failed to update status");
-                }
+                await updateDoc(doc(db, 'recycling_logs', id), { archived: !status });
             };
 
             const batchRestore = async () => {
                 const batch = writeBatch(db);
-                selectedLogIds.forEach(id => {
-                    batch.update(doc(db, 'recycling_logs', id), { archived: false });
-                });
-                await batch.commit();
-                setSelectedLogIds(new Set());
-                alert("Restored Selected.");
+                selectedLogIds.forEach(id => batch.update(doc(db, 'recycling_logs', id), { archived: false }));
+                await batch.commit(); setSelectedLogIds(new Set()); alert("Restored.");
             };
 
             const batchDelete = async () => {
-                if(!confirm("Permanently delete selected records? This cannot be undone.")) return;
+                if(!confirm("Permanently delete?")) return;
                 const batch = writeBatch(db);
-                selectedLogIds.forEach(id => {
-                    batch.delete(doc(db, 'recycling_logs', id));
-                });
-                await batch.commit();
-                setSelectedLogIds(new Set());
-                alert("Deleted Selected.");
+                selectedLogIds.forEach(id => batch.delete(doc(db, 'recycling_logs', id)));
+                await batch.commit(); setSelectedLogIds(new Set()); alert("Deleted.");
             };
 
             if (loading) return <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-400"><Loader2 className="animate-spin mr-2" /> Loading...</div>;
@@ -507,7 +450,6 @@
             if (printMode) {
                 const source = activeTab === 'archives' ? archivedLogs : activeLogs;
                 const pLogs = selectedLogIds.size > 0 ? source.filter(l => selectedLogIds.has(l.id)) : source;
-                
                 let title = appSettings.companyName;
                 if (appSettings.dynamicReports) {
                     if (archiveGroupBy === 'location') {
@@ -516,6 +458,9 @@
                     } else if (archiveGroupBy === 'manufacturer') {
                         const uniqueManuf = [...new Set(pLogs.map(l => l.manufacturer))];
                         if (uniqueManuf.length === 1) title = uniqueManuf[0];
+                    } else if (archiveGroupBy === 'jobName') {
+                         const uniqueJob = [...new Set(pLogs.map(l => l.jobName))];
+                         if (uniqueJob.length === 1) title = uniqueJob[0];
                     }
                 }
 
@@ -532,14 +477,14 @@
                             </div>
                             <div className="text-right text-sm"><p>{new Date().toLocaleDateString('en-US')}</p><p className="font-bold">Total: {pLogs.reduce((a,l)=>a+Number(l.weight),0).toLocaleString()} lbs</p></div>
                         </div>
-                        <table className="w-full text-left text-sm">
-                            <thead className="border-b-2 border-black"><tr><th>Date</th><th>Source</th><th>Manufacturer / Model</th>{appSettings.showDates && <th>Install / Exp</th>}<th className="text-right">Unit Lbs</th><th className="text-right">Qty</th><th className="text-right">Total Lbs</th></tr></thead>
+                        <table className="w-full text-left text-sm print-bordered">
+                            <thead className="border-b-2 border-black"><tr><th>Date</th><th>Source</th><th>Manufacturer / Model</th>{appSettings.showDates && <th>Install / Exp / Status</th>}<th className="text-right">Unit Lbs</th><th className="text-right">Qty</th><th className="text-right">Total Lbs</th></tr></thead>
                             <tbody>{pLogs.map((l, idx) => (
                                 <tr key={l.id} className={`border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50 zebra-row'}`}>
                                     <td className="py-2">{l.dateStr}</td>
                                     <td className="py-2">{l.location}</td>
                                     <td className="py-2"><span className="font-bold">{l.manufacturer}</span> {l.batteryModel}</td>
-                                    {appSettings.showDates && <td className="py-2 text-xs">{formatDate(l.installDate) || '-'} / {formatDate(l.expiryDate) || '-'}</td>}
+                                    {appSettings.showDates && <td className="py-2 text-xs flex items-center gap-2">{formatDate(l.installDate) || '-'} / {formatDate(l.expiryDate) || '-'} <StatusIcon date={l.expiryDate}/></td>}
                                     <td className="py-2 text-right">{l.unitWeight}</td>
                                     <td className="py-2 text-right font-bold">{l.count}</td>
                                     <td className="py-2 text-right font-mono">{l.weight}</td>
@@ -552,67 +497,43 @@
 
             return (
                 <div className={`${appSettings.fontStyle} text-sm md:text-base flex flex-col h-screen`}>
-                    {/* --- HEADER --- */}
                     <div className={`z-50 sticky top-0 w-full p-3 md:px-6 flex justify-between items-center bg-slate-900 text-white shadow-md`}>
                         <div className="flex items-center space-x-3">
                             {appSettings.logoUrl ? <img src={appSettings.logoUrl} className="h-8 md:h-10 object-contain" /> : <div className={`p-2 rounded-lg ${theme.primary} text-white`}><Battery size={20}/></div>}
                             <h1 className="text-lg md:text-xl font-bold tracking-tight">{String(appSettings.companyName)}</h1>
                         </div>
-                        
-                        <nav className="hidden md:flex gap-1">
-                            {['dashboard', 'log', 'database', 'archives', 'settings'].map(t => (
-                                <button key={t} onClick={() => setActiveTab(t)} className={`px-4 py-2 rounded-lg font-bold capitalize transition-all ${activeTab === t ? `${theme.primary} text-white shadow-md` : 'hover:bg-slate-800'}`}>{t}</button>
-                            ))}
-                        </nav>
-
+                        <nav className="hidden md:flex gap-1">{['dashboard', 'log', 'database', 'archives', 'settings'].map(t => (<button key={t} onClick={() => setActiveTab(t)} className={`px-4 py-2 rounded-lg font-bold capitalize transition-all ${activeTab === t ? `${theme.primary} text-white shadow-md` : 'hover:bg-slate-800'}`}>{t}</button>))}</nav>
                         <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-full hover:bg-slate-800 transition-colors">{isDarkMode ? <Sun size={20} className="text-amber-400" /> : <Moon size={20} className="text-slate-400" />}</button>
                     </div>
 
-                    {/* --- MAIN CONTENT --- */}
                     <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
                         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
                             
-                            {/* LEFT COLUMN */}
                             <div className="lg:col-span-2 space-y-6">
-                                
                                 {activeTab === 'dashboard' && (
                                     <>
                                         <div className="grid grid-cols-2 gap-4">
-                                            <Card className={`p-6 border-l-4 ${theme.border}`}>
-                                                <p className="text-xs font-bold opacity-60 uppercase tracking-wider">Total Recycled</p>
-                                                <h3 className="text-3xl font-bold mt-1">{activeLogs.reduce((a,l)=>a+Number(l.weight),0).toLocaleString()} <span className="text-sm font-normal opacity-50">lbs</span></h3>
-                                            </Card>
-                                            <Card className="p-6 border-l-4 border-slate-400 dark:border-slate-600">
-                                                <p className="text-xs font-bold opacity-60 uppercase tracking-wider">Total Units</p>
-                                                <h3 className="text-3xl font-bold mt-1">{activeLogs.reduce((a,l)=>a+Number(l.count),0).toLocaleString()}</h3>
-                                            </Card>
+                                            <Card className={`p-6 border-l-4 ${theme.border}`}><p className="text-xs font-bold opacity-60 uppercase tracking-wider">Total Recycled</p><h3 className="text-3xl font-bold mt-1">{activeLogs.reduce((a,l)=>a+Number(l.weight),0).toLocaleString()} <span className="text-sm font-normal opacity-50">lbs</span></h3></Card>
+                                            <Card className="p-6 border-l-4 border-slate-400 dark:border-slate-600"><p className="text-xs font-bold opacity-60 uppercase tracking-wider">Total Units</p><h3 className="text-3xl font-bold mt-1">{activeLogs.reduce((a,l)=>a+Number(l.count),0).toLocaleString()}</h3></Card>
                                         </div>
                                         <Card>
-                                            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                                                <h3 className="font-bold text-sm uppercase opacity-70">Active Manifests</h3>
-                                                <button onClick={() => setPrintMode(true)} className="flex items-center text-xs bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded hover:opacity-80"><Printer size={14} className="mr-1"/> Print</button>
+                                            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center"><h3 className="font-bold text-sm uppercase opacity-70">Active Manifests</h3>
+                                                <div className="flex gap-2">
+                                                    <button onClick={completeJob} disabled={selectedLogIds.size===0} className={`flex items-center text-xs px-3 py-1.5 rounded font-bold text-white ${selectedLogIds.size > 0 ? theme.primary : 'bg-slate-400'}`}><Briefcase size={14} className="mr-1"/> Complete Job</button>
+                                                    <button onClick={() => setPrintMode(true)} className="flex items-center text-xs bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded hover:opacity-80"><Printer size={14} className="mr-1"/> Print</button>
+                                                </div>
                                             </div>
                                             <div className="overflow-x-auto max-h-[600px]">
                                                 <table className="w-full text-left text-sm">
-                                                    <thead className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase font-bold opacity-70 sticky top-0">
-                                                        <tr><th className="p-4">Sts</th><th>Source / Model</th>{appSettings.showDates && <th>Dates</th>}<th className="text-right">Unit</th><th className="text-right">Qty</th><th className="text-right">Total</th><th className="p-4 text-center">Act</th></tr>
-                                                    </thead>
+                                                    <thead className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase font-bold opacity-70 sticky top-0"><tr><th className="p-4 w-10"><button onClick={() => setSelectedLogIds(selectedLogIds.size === activeLogs.length ? new Set() : new Set(activeLogs.map(l => l.id)))}>{selectedLogIds.size === activeLogs.length && activeLogs.length > 0 ? <CheckSquare size={16} /> : <Square size={16} />}</button></th><th>Source / Model</th>{appSettings.showDates && <th>Dates</th>}<th className="text-right">Unit</th><th className="text-right">Qty</th><th className="text-right">Total</th><th className="p-4 text-center">Act</th></tr></thead>
                                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                                         {activeLogs.map((l, idx) => (
                                                             <tr key={l.id} className={`hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800/50'}`}>
-                                                                <td className="p-4"><StatusIcon date={l.expiryDate} /></td>
-                                                                <td>
-                                                                    <div className="font-bold">{l.location}</div>
-                                                                    <div className="text-xs opacity-60">{l.manufacturer} {l.batteryModel}</div>
-                                                                </td>
+                                                                <td className="p-4"><button onClick={() => setSelectedLogIds(p => { const n = new Set(p); n.has(l.id) ? n.delete(l.id) : n.add(l.id); return n; })}>{selectedLogIds.has(l.id) ? <CheckSquare size={16} className="text-emerald-500"/> : <Square size={16} className="text-slate-300"/>}</button></td>
+                                                                <td><div className="font-bold flex items-center gap-2">{appSettings.showDates && <StatusIcon date={l.expiryDate} />} {l.location}</div><div className="text-xs opacity-60 ml-5">{l.manufacturer} {l.batteryModel}</div></td>
                                                                 {appSettings.showDates && <td className="text-[10px] opacity-70">In: {formatDate(l.installDate) || '-'}<br/>Ex: {formatDate(l.expiryDate) || '-'}</td>}
-                                                                <td className="text-right opacity-70">{l.unitWeight}</td>
-                                                                <td className="text-right font-bold">{l.count}</td>
-                                                                <td className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">{l.weight}</td>
-                                                                <td className="p-4 text-center flex justify-center gap-2">
-                                                                    <button onClick={() => { setEditingId(l.id); setFormData(l); setActiveTab('log'); }} className="hover:text-blue-500"><Edit2 size={16}/></button>
-                                                                    <button onClick={() => toggleArchive(l.id, false)} className="hover:text-amber-500"><Archive size={16}/></button>
-                                                                </td>
+                                                                <td className="text-right opacity-70">{l.unitWeight}</td><td className="text-right font-bold">{l.count}</td><td className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">{l.weight}</td>
+                                                                <td className="p-4 text-center flex justify-center gap-2"><button onClick={() => { setEditingId(l.id); setFormData(l); setActiveTab('log'); }} className="hover:text-blue-500"><Edit2 size={16}/></button><button onClick={() => toggleArchive(l.id, false)} className="hover:text-amber-500"><Archive size={16}/></button></td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
@@ -624,54 +545,27 @@
 
                                 {activeTab === 'log' && (
                                     <Card className="p-6 md:p-8 relative overflow-visible">
-                                        <div className="flex justify-between items-center mb-8">
-                                            <h2 className="text-2xl font-bold">{editingId ? 'Edit Entry' : 'New Manifest'}</h2>
-                                            <div className="flex gap-2">
-                                                <label className={`flex items-center px-4 py-2 rounded-xl cursor-pointer shadow-lg transition-transform active:scale-95 ${scanning ? 'bg-slate-200' : `${theme.primary} text-white`}`}>
-                                                    {scanning ? <Loader2 className="animate-spin mr-2"/> : <Camera className="mr-2"/>}
-                                                    <span className="font-bold text-xs">{scanning ? 'Scanning...' : 'Scan Label'}</span>
-                                                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={aiScan} disabled={scanning}/>
-                                                </label>
-                                            </div>
-                                        </div>
-
+                                        <div className="flex justify-between items-center mb-8"><h2 className="text-2xl font-bold">{editingId ? 'Edit Entry' : 'New Manifest'}</h2><div className="flex gap-2"><label className={`flex items-center px-4 py-2 rounded-xl cursor-pointer shadow-lg transition-transform active:scale-95 ${scanning ? 'bg-slate-200' : `${theme.primary} text-white`}`}>{scanning ? <Loader2 className="animate-spin mr-2"/> : <Camera className="mr-2"/>}<span className="font-bold text-xs">{scanning ? 'Scanning...' : 'Scan Label'}</span><input type="file" accept="image/*" capture="environment" className="hidden" onChange={aiScan} disabled={scanning}/></label></div></div>
                                         <form onSubmit={saveRecord} className="space-y-6">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <div className="relative">
-                                                    <label className="text-xs font-bold uppercase opacity-50 mb-1 block">Battery Model</label>
-                                                    <div className="flex gap-2">
-                                                        <input value={formData.batteryModel} onChange={(e) => handleModelSearch(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500 outline-none transition-all" placeholder="Type model..." />
-                                                        <button type="button" onClick={aiTextSearch} disabled={searchingModel} className="p-3 border rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">{searchingModel ? <Loader2 className="animate-spin"/> : <Sparkles className="text-amber-500"/>}</button>
-                                                    </div>
-                                                    {suggestions.length > 0 && <div className="absolute z-50 w-full mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border dark:border-slate-700 max-h-60 overflow-y-auto p-1">
-                                                        {suggestions.map((s,i) => <div key={i} onClick={() => selectBattery(s)} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg cursor-pointer border-b dark:border-slate-700 last:border-0 flex justify-between">
-                                                            <span className="font-bold">{s.manufacturer} {s.model}</span>
-                                                            <span className="text-xs opacity-50">{s.weight} lbs</span>
-                                                        </div>)}
-                                                    </div>}
-                                                </div>
+                                                <div className="relative"><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Battery Model</label><div className="flex gap-2"><input value={formData.batteryModel} onChange={(e) => handleModelSearch(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500 outline-none transition-all" placeholder="Type model..." /><button type="button" onClick={aiTextSearch} disabled={searchingModel} className="p-3 border rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">{searchingModel ? <Loader2 className="animate-spin"/> : <Sparkles className="text-amber-500"/>}</button></div>
+                                                {suggestions.length > 0 && <div className="absolute z-50 w-full mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border dark:border-slate-700 max-h-60 overflow-y-auto p-1">{suggestions.map((s,i) => <div key={i} onClick={() => selectBattery(s)} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg cursor-pointer border-b dark:border-slate-700 last:border-0 flex justify-between"><span className="font-bold">{s.manufacturer} {s.model}</span><span className="text-xs opacity-50">{s.weight} lbs</span></div>)}</div>}</div>
                                                 <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Manufacturer</label><input value={formData.manufacturer} onChange={e=>setFormData({...formData, manufacturer: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900" /></div>
                                             </div>
-
                                             <div className="grid grid-cols-2 gap-6">
                                                 <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Source / Customer</label><input list="sources" value={formData.location} onChange={e=>setFormData({...formData, location: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900" /><datalist id="sources">{savedSources.map(s=><option key={s} value={s}/>)}</datalist></div>
                                                 <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Type</label><select value={formData.type} onChange={e=>setFormData({...formData, type: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"><option>Lead-Acid</option><option>Wet Cell</option><option>Li-ion</option></select></div>
                                             </div>
-
                                             <div className="grid grid-cols-3 gap-4 bg-slate-100 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                                                 <div><label className="text-[10px] font-bold uppercase opacity-50">Unit Lbs</label><input type="number" step="0.1" value={formData.unitWeight} onChange={e=>setFormData({...formData, unitWeight: e.target.value})} className="w-full p-2 bg-transparent border-b border-slate-300 dark:border-slate-600 focus:border-emerald-500 outline-none font-mono font-bold" placeholder="0.0" /></div>
                                                 <div><label className="text-[10px] font-bold uppercase opacity-50">Count</label><input type="number" value={formData.count} onChange={e=>setFormData({...formData, count: e.target.value})} className="w-full p-2 bg-transparent border-b border-slate-300 dark:border-slate-600 focus:border-emerald-500 outline-none font-mono font-bold" placeholder="0" /></div>
                                                 <div><label className="text-[10px] font-bold uppercase opacity-50">Total Lbs</label><input readOnly value={formData.totalWeight} className="w-full p-2 bg-transparent border-b border-transparent font-mono font-bold text-emerald-600" /></div>
                                             </div>
-
-                                            {appSettings.showDates && (
-                                                <div className="grid grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-800/30 p-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-                                                    <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Install Date</label><input type="date" value={formData.installDate} onChange={e=>setFormData({...formData, installDate: e.target.value})} className="w-full p-2 rounded-lg border dark:border-slate-600 dark:bg-slate-800" /></div>
-                                                    <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Expected Life</label><input type="text" placeholder="e.g. 5 Years" value={formData.expectedLife} onChange={e=>setFormData({...formData, expectedLife: e.target.value})} className="w-full p-2 rounded-lg border dark:border-slate-600 dark:bg-slate-800" /></div>
-                                                    <div className="col-span-2"><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Expiry (Auto-Calc)</label><input type="date" value={formData.expiryDate} onChange={e=>setFormData({...formData, expiryDate: e.target.value})} className="w-full p-2 rounded-lg border dark:border-slate-600 dark:bg-slate-800 font-bold text-slate-600 dark:text-slate-300" /></div>
-                                                </div>
-                                            )}
-
+                                            {appSettings.showDates && (<div className="grid grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-800/30 p-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                                                <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Install Date</label><input type="date" value={formData.installDate} onChange={e=>setFormData({...formData, installDate: e.target.value})} className="w-full p-2 rounded-lg border dark:border-slate-600 dark:bg-slate-800" /></div>
+                                                <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Expected Life</label><input type="text" placeholder="e.g. 5 Years" value={formData.expectedLife} onChange={e=>setFormData({...formData, expectedLife: e.target.value})} className="w-full p-2 rounded-lg border dark:border-slate-600 dark:bg-slate-800" /></div>
+                                                <div className="col-span-2"><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Expiry (Auto-Calc)</label><input type="date" value={formData.expiryDate} onChange={e=>setFormData({...formData, expiryDate: e.target.value})} className="w-full p-2 rounded-lg border dark:border-slate-600 dark:bg-slate-800 font-bold text-slate-600 dark:text-slate-300" /></div>
+                                            </div>)}
                                             <button type="submit" className={`w-full py-4 rounded-xl font-bold text-white shadow-xl transition-all hover:scale-[1.02] active:scale-95 ${theme.primary}`}>{editingId ? 'Update Entry' : 'Save to Manifest'}</button>
                                         </form>
                                     </Card>
@@ -686,7 +580,6 @@
                                             </div>
                                             {dbSubTab === 'library' && <button onClick={() => setAddingLibItem(true)} className="flex items-center px-3 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold shadow hover:bg-emerald-600"><Plus size={14} className="mr-1"/> Add New</button>}
                                         </div>
-
                                         {addingLibItem && (
                                             <Card className="p-4 border-emerald-500 border-2">
                                                 <h3 className="font-bold text-xs uppercase mb-3">New Library Spec</h3>
@@ -700,40 +593,30 @@
                                                     <input placeholder="Expected Life" value={newLibData.life} onChange={e=>setNewLibData({...newLibData, life: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
                                                     <input placeholder="Amp Hours" value={newLibData.ah} onChange={e=>setNewLibData({...newLibData, ah: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
                                                 </div>
-                                                <div className="flex justify-end gap-2">
-                                                    <button onClick={() => setAddingLibItem(false)} className="px-3 py-1 text-xs border rounded">Cancel</button>
-                                                    <button onClick={handleNewLibSubmit} className="px-3 py-1 text-xs bg-emerald-500 text-white rounded font-bold">Save Spec</button>
-                                                </div>
+                                                <div className="flex justify-end gap-2"><button onClick={() => setAddingLibItem(false)} className="px-3 py-1 text-xs border rounded">Cancel</button><button onClick={handleNewLibSubmit} className="px-3 py-1 text-xs bg-emerald-500 text-white rounded font-bold">Save Spec</button></div>
                                             </Card>
                                         )}
-
                                         <Card className="min-h-[400px]">
-                                            <div className="p-4 border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center">
-                                                <Search size={14} className="opacity-50 mr-2"/>
-                                                <input placeholder="Search database..." value={dbSearch} onChange={e=>setDbSearch(e.target.value)} className="bg-transparent outline-none text-sm w-full" />
-                                            </div>
+                                            <div className="p-4 border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center"><Search size={14} className="opacity-50 mr-2"/><input placeholder="Search database..." value={dbSearch} onChange={e=>setDbSearch(e.target.value)} className="bg-transparent outline-none text-sm w-full" /></div>
                                             <div className="p-4 space-y-2 max-h-[600px] overflow-y-auto">
                                                 {dbSubTab === 'explorer' ? Object.entries(groupedActive).map(([k,v]) => (
                                                     <div key={k} className="border dark:border-slate-700 rounded-lg overflow-hidden">
                                                         <button onClick={() => setExpandedFolders(p => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; })} className="w-full p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                                            <div className="flex items-center gap-3"><Folder size={18} className="text-amber-400"/><span className="font-bold text-sm">{k}</span></div>
-                                                            <span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded opacity-70">{v.length}</span>
+                                                            <div className="flex items-center gap-3"><Folder size={18} className="text-amber-400"/><span className="font-bold text-sm">{k}</span></div><span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded opacity-70">{v.length}</span>
                                                         </button>
-                                                        {expandedFolders.has(k) && <div className="bg-slate-50 dark:bg-slate-900/50 border-t dark:border-slate-700">{v.map(l => <div key={l.id} className="p-2 pl-10 text-xs border-b dark:border-slate-800 last:border-0 flex justify-between"><span><span className="font-bold">{l.manufacturer}</span> {l.batteryModel}</span><span className="opacity-50">{l.weight} lbs</span></div>)}</div>}
+                                                        {expandedFolders.has(k) && <div className="bg-slate-50 dark:bg-slate-900/50 border-t dark:border-slate-700">{v.map((l,idx) => <div key={l.id} className={`p-2 pl-10 text-xs border-b dark:border-slate-800 last:border-0 flex justify-between ${idx % 2 === 0 ? 'bg-slate-50/50 dark:bg-slate-900/50' : 'bg-transparent'}`}><span><span className="font-bold">{l.manufacturer}</span> {l.batteryModel}</span><span className="opacity-50">{l.weight} lbs</span></div>)}</div>}
                                                     </div>
                                                 )) : Object.entries(groupedLib).map(([manuf, items]) => (
                                                     <div key={manuf} className="border dark:border-slate-700 rounded-lg overflow-hidden">
                                                         <button onClick={() => setExpandedLibFolders(p => { const n = new Set(p); n.has(manuf) ? n.delete(manuf) : n.add(manuf); return n; })} className="w-full p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                                            <div className="flex items-center gap-3"><Folder size={18} className="text-blue-400"/><span className="font-bold text-sm">{manuf}</span></div>
-                                                            <span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded opacity-70">{items.length}</span>
+                                                            <div className="flex items-center gap-3"><Folder size={18} className="text-blue-400"/><span className="font-bold text-sm">{manuf}</span></div><span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded opacity-70">{items.length}</span>
                                                         </button>
                                                         {expandedLibFolders.has(manuf) && (
                                                             <div className="bg-slate-50 dark:bg-slate-900/50 border-t dark:border-slate-700 p-2 grid grid-cols-1 gap-2">
                                                                 {items.map((b,i) => (
-                                                                    <div key={i} className="p-2 bg-white dark:bg-slate-800 rounded border dark:border-slate-700 flex justify-between group cursor-pointer hover:border-emerald-500">
+                                                                    <div key={i} className={`p-2 bg-white dark:bg-slate-800 rounded border dark:border-slate-700 flex justify-between group cursor-pointer hover:border-emerald-500 ${i % 2 === 0 ? 'bg-slate-50 dark:bg-slate-900' : ''}`}>
                                                                         <div onClick={() => { setFormData({ batteryModel: b.model, manufacturer: b.manufacturer, type: b.type, unitWeight: String(b.weight), ampHours: String(b.ah||''), expectedLife: String(b.life||'') }); setActiveTab('log'); }}>
-                                                                            <span className="text-xs font-bold block">{b.model}</span>
-                                                                            <span className="text-[10px] opacity-60">Type: {b.type} • Weight: {b.weight} lbs • Life: {b.life || 'N/A'} • AH: {b.ah || 'N/A'}</span>
+                                                                            <span className="text-xs font-bold block">{b.model}</span><span className="text-[10px] opacity-60">Type: {b.type} • {b.weight} lbs • Life: {b.life || 'N/A'} • AH: {b.ah || 'N/A'}</span>
                                                                         </div>
                                                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
                                                                             <button onClick={(e) => handleEditLibItem(e, b)} className="hover:bg-slate-100 dark:hover:bg-slate-700 p-1 rounded"><MoreHorizontal size={14}/></button>
@@ -763,6 +646,7 @@
                                                     <div className="flex bg-slate-100 dark:bg-slate-800 rounded p-0.5">
                                                         <button onClick={() => setArchiveGroupBy('location')} className={`px-2 py-0.5 text-[10px] font-bold rounded ${archiveGroupBy === 'location' ? 'bg-white shadow text-black' : 'text-slate-400'}`}>Source</button>
                                                         <button onClick={() => setArchiveGroupBy('manufacturer')} className={`px-2 py-0.5 text-[10px] font-bold rounded ${archiveGroupBy === 'manufacturer' ? 'bg-white shadow text-black' : 'text-slate-400'}`}>Mfg</button>
+                                                        <button onClick={() => setArchiveGroupBy('jobName')} className={`px-2 py-0.5 text-[10px] font-bold rounded ${archiveGroupBy === 'jobName' ? 'bg-white shadow text-black' : 'text-slate-400'}`}>Job</button>
                                                     </div>
                                                     <button onClick={() => setPrintMode(true)} disabled={selectedLogIds.size === 0} className={`flex items-center px-3 py-1.5 rounded text-xs font-bold ${selectedLogIds.size > 0 ? 'bg-emerald-500 text-white shadow' : 'bg-slate-100 text-slate-400'}`}><Printer className="mr-1" size={14}/> Report</button>
                                                 </div>
