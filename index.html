@@ -62,7 +62,7 @@
             Square, Palette, Type, Calendar, Archive, RefreshCcw, Layout, Box, Database, 
             Download, Upload, Camera, Loader2, SearchCode, ChevronRight, ChevronDown, Folder, 
             FileText, Library, AlertTriangle, ShieldCheck, FlipHorizontal, Image as ImageIcon,
-            PenTool, Sparkles, Filter, ToggleLeft, ToggleRight, Layers, MoreHorizontal
+            PenTool, Sparkles, Filter, ToggleLeft, ToggleRight, Layers, MoreHorizontal, Info
         } from 'lucide-react';
         
         import { initializeApp } from 'firebase/app';
@@ -90,11 +90,14 @@
 
         // --- DATA ---
         const INITIAL_BATTERY_DB = [
+            // CSB
             { manufacturer: "CSB", model: "HRL 1234W", type: "Lead-Acid", weight: 5.7, ah: 9, life: "5-8 Years" },
             { manufacturer: "CSB", model: "GP 1272", type: "Lead-Acid", weight: 5.3, ah: 7.2, life: "3-5 Years" },
             { manufacturer: "CSB", model: "GP 12120", type: "Lead-Acid", weight: 8.1, ah: 12, life: "3-5 Years" },
             { manufacturer: "CSB", model: "GP 12170", type: "Lead-Acid", weight: 12.1, ah: 17, life: "3-5 Years" },
             { manufacturer: "CSB", model: "HRL 12500W", type: "Lead-Acid", weight: 97, ah: 125, life: "8-10 Years" },
+            
+            // Universal
             { manufacturer: "Universal", model: "UB1223 (2.3Ah)", type: "Lead-Acid", weight: 1.6, ah: 2.3, life: "3-5 Years" },
             { manufacturer: "Universal", model: "UB1250 (5Ah)", type: "Lead-Acid", weight: 3.5, ah: 5, life: "3-5 Years" },
             { manufacturer: "Universal", model: "UB1270 (7Ah)", type: "Lead-Acid", weight: 4.8, ah: 7, life: "3-5 Years" },
@@ -103,34 +106,60 @@
             { manufacturer: "Universal", model: "UB12100 (10Ah)", type: "Lead-Acid", weight: 7.1, ah: 10, life: "3-5 Years" },
             { manufacturer: "Universal", model: "UB12120 (12Ah)", type: "Lead-Acid", weight: 8.2, ah: 12, life: "3-5 Years" },
             { manufacturer: "Universal", model: "UB12180 (18Ah)", type: "Lead-Acid", weight: 11.6, ah: 18, life: "3-5 Years" },
+            
+            // Power-Sonic
             { manufacturer: "Power-Sonic", model: "PS-1270", type: "Lead-Acid", weight: 4.8, ah: 7, life: "3-5 Years" },
             { manufacturer: "Power-Sonic", model: "PS-1290", type: "Lead-Acid", weight: 5.1, ah: 9, life: "3-5 Years" },
+            
+            // APC / Schneider
             { manufacturer: "APC", model: "RBC2", type: "Lead-Acid", weight: 5.5, ah: 7, life: "3-5 Years" },
             { manufacturer: "APC", model: "RBC7", type: "Lead-Acid", weight: 24.5, ah: 18, life: "3-5 Years" },
             { manufacturer: "APC", model: "RBC12", type: "Lead-Acid", weight: 42.1, ah: 7, life: "3-5 Years" },
             { manufacturer: "APC", model: "RBC44", type: "Lead-Acid", weight: 76.2, ah: 5, life: "3-5 Years" },
+            
+            // Enersys
             { manufacturer: "Enersys", model: "DataSafe 12HX205", type: "Lead-Acid", weight: 42, ah: 44, life: "10 Years" },
             { manufacturer: "Enersys", model: "DataSafe 12HX300", type: "Lead-Acid", weight: 60, ah: 71, life: "10 Years" },
             { manufacturer: "Enersys", model: "DataSafe 12HX330", type: "Lead-Acid", weight: 65, ah: 78, life: "10 Years" },
             { manufacturer: "Enersys", model: "DataSafe 12HX400", type: "Lead-Acid", weight: 80, ah: 92, life: "10 Years" },
             { manufacturer: "Enersys", model: "DataSafe 12HX505", type: "Lead-Acid", weight: 104, ah: 115, life: "10 Years" },
             { manufacturer: "Enersys", model: "DataSafe 12HX540", type: "Lead-Acid", weight: 106, ah: 123, life: "10 Years" },
+            
+            // C&D Technologies
             { manufacturer: "C&D", model: "UPS12-300MR", type: "Lead-Acid", weight: 58, ah: 78, life: "10 Years" },
             { manufacturer: "C&D", model: "UPS12-350MR", type: "Lead-Acid", weight: 68, ah: 90, life: "10 Years" },
             { manufacturer: "C&D", model: "UPS12-400MR", type: "Lead-Acid", weight: 76, ah: 102, life: "10 Years" },
             { manufacturer: "C&D", model: "UPS12-490MR", type: "Lead-Acid", weight: 98, ah: 138, life: "10 Years" },
             { manufacturer: "C&D", model: "UPS12-540MR", type: "Lead-Acid", weight: 105, ah: 148, life: "10 Years" },
             { manufacturer: "C&D", model: "JC 400 (Wet)", type: "Wet Cell", weight: 65, ah: 400, life: "20 Years" },
+            
+            // Leoch
+            { manufacturer: "Leoch", model: "LP12-7.0", type: "Lead-Acid", weight: 4.7, ah: 7, life: "3-5 Years" },
+            { manufacturer: "Leoch", model: "LP12-9.0", type: "Lead-Acid", weight: 5.5, ah: 9, life: "3-5 Years" },
+            { manufacturer: "Leoch", model: "XP12-300", type: "Lead-Acid", weight: 57, ah: 75, life: "10 Years" },
+            { manufacturer: "Leoch", model: "XP12-400", type: "Lead-Acid", weight: 75, ah: 100, life: "10 Years" },
+
+            // Deka
             { manufacturer: "Deka", model: "12AVR100ET", type: "Lead-Acid", weight: 69, ah: 100, life: "10 Years" },
             { manufacturer: "Deka", model: "12AVR145ET", type: "Lead-Acid", weight: 104, ah: 145, life: "10 Years" },
             { manufacturer: "Deka", model: "12AVR170ET", type: "Lead-Acid", weight: 118, ah: 170, life: "10 Years" },
+            
+            // Amstron
             { manufacturer: "Amstron", model: "AP-1270", type: "Lead-Acid", weight: 4.8, ah: 7, life: "3-5 Years" },
             { manufacturer: "Amstron", model: "AP-1290", type: "Lead-Acid", weight: 5.4, ah: 9, life: "3-5 Years" },
+
+            // Trojan
             { manufacturer: "Trojan", model: "T-105 (6V)", type: "Wet Cell", weight: 62, ah: 225, life: "5-7 Years" },
             { manufacturer: "Trojan", model: "L16P (6V)", type: "Wet Cell", weight: 115, ah: 360, life: "5-8 Years" },
+            
+            // Tesla
             { manufacturer: "Tesla", model: "Powerwall 2", type: "Li-ion", weight: 251, ah: 0, life: "10-15 Years" },
             { manufacturer: "Tesla", model: "Powerwall 3", type: "Li-ion", weight: 287, ah: 0, life: "10-15 Years" },
+            
+            // LG
             { manufacturer: "LG Chem", model: "RESU 10H", type: "Li-ion", weight: 214, ah: 63, life: "10 Years" },
+            
+            // Enphase
             { manufacturer: "Enphase", model: "IQ Battery 10", type: "Li-ion", weight: 346, ah: 0, life: "10-15 Years" },
         ];
 
@@ -212,18 +241,34 @@
             const activeLogs = useMemo(() => logs.filter(l => !l.archived), [logs]);
             const archivedLogs = useMemo(() => logs.filter(l => l.archived), [logs]);
             
-            // Merge & Deduplicate Library
+            const allTimeStats = useMemo(() => {
+                return logs.reduce((acc, l) => {
+                    acc.weight += Number(l.weight || 0);
+                    acc.count += Number(l.count || 0);
+                    return acc;
+                }, { weight: 0, count: 0 });
+            }, [logs]);
+
+            // Merge & Deduplicate Library: Smart Merge logic
             const fullLibrary = useMemo(() => {
-                const customMap = new Map(customLibrary.map(i => [((i.manufacturer||"") + (i.model||"")).toLowerCase(), i]));
-                const merged = [...customLibrary];
-                
+                // Map custom items by key
+                const customMap = new Map();
+                customLibrary.forEach(i => {
+                    const key = ((i.manufacturer||"").trim() + (i.model||"").trim()).toLowerCase();
+                    customMap.set(key, i);
+                });
+
+                // Start with built-ins, but skip if a custom override exists
+                const merged = [];
                 INITIAL_BATTERY_DB.forEach(initItem => {
-                    const key = ((initItem.manufacturer||"") + (initItem.model||"")).toLowerCase();
+                    const key = ((initItem.manufacturer||"").trim() + (initItem.model||"").trim()).toLowerCase();
                     if (!customMap.has(key)) {
                         merged.push(initItem);
                     }
                 });
-                return merged.sort((a,b) => (a.manufacturer||'').localeCompare(b.manufacturer||''));
+                
+                // Add all custom items
+                return [...merged, ...customLibrary].sort((a,b) => (a.manufacturer||'').localeCompare(b.manufacturer||''));
             }, [customLibrary]);
 
             // Effects
@@ -276,9 +321,9 @@
                         await addDoc(collection(db, 'saved_sources'), {name: formData.location});
                     }
                     
-                    // Library Sync: If model doesn't exist in fullLibrary, add to custom
-                    const modelKey = ((formData.manufacturer||"") + (formData.batteryModel||"")).toLowerCase();
-                    const exists = fullLibrary.some(b => ((b.manufacturer||"") + (b.model||"")).toLowerCase() === modelKey);
+                    // Auto-add to Library
+                    const modelKey = ((formData.manufacturer||"").trim() + (formData.batteryModel||"").trim()).toLowerCase();
+                    const exists = fullLibrary.some(b => ((b.manufacturer||"").trim() + (b.model||"").trim()).toLowerCase() === modelKey);
                     
                     if (!exists && formData.batteryModel && formData.manufacturer) {
                         await addDoc(collection(db, 'custom_library'), {
@@ -338,6 +383,17 @@
                 });
                 setAddingLibItem(true);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+            
+            const handleDeleteLibItem = async (e, item) => {
+                e.stopPropagation();
+                if (!item.id) {
+                    alert("Cannot delete built-in items. You can create a custom version to override it.");
+                    return;
+                }
+                if(confirm("Delete this library item?")) {
+                    await deleteDoc(doc(db, 'custom_library', item.id));
+                }
             };
 
             const handleModelSearch = async (val) => {
@@ -679,7 +735,10 @@
                                                                             <span className="text-xs font-bold block">{b.model}</span>
                                                                             <span className="text-[10px] opacity-60">Type: {b.type} • Weight: {b.weight} lbs • Life: {b.life || 'N/A'} • AH: {b.ah || 'N/A'}</span>
                                                                         </div>
-                                                                        <button onClick={(e) => handleEditLibItem(e, b)} className="opacity-0 group-hover:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-700 p-1 rounded"><MoreHorizontal size={14}/></button>
+                                                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                                                                            <button onClick={(e) => handleEditLibItem(e, b)} className="hover:bg-slate-100 dark:hover:bg-slate-700 p-1 rounded"><MoreHorizontal size={14}/></button>
+                                                                            {b.id && <button onClick={(e) => handleDeleteLibItem(e, b)} className="hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded text-red-500"><Trash2 size={14}/></button>}
+                                                                        </div>
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -766,31 +825,25 @@
                                             </div>
                                         </div>
                                         <button onClick={saveSettings} className={`px-8 py-3 rounded-xl font-bold text-white shadow-lg transition-transform hover:scale-105 ${theme.primary}`}>Save All Changes</button>
+                                        
+                                        <div className="mt-12 pt-8 border-t dark:border-slate-700 text-center">
+                                            <p className="font-bold text-slate-500 text-xs uppercase tracking-wider mb-2">About</p>
+                                            <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">CTRL Inc.</h3>
+                                            <p className="text-xs text-slate-400">Battery Recycling Management System v2.0</p>
+                                            
+                                            <div className="mt-6 flex justify-center gap-8">
+                                                <div className="text-center">
+                                                    <p className="text-2xl font-bold text-emerald-500">{Math.round(allTimeStats.weight).toLocaleString()}</p>
+                                                    <p className="text-[10px] uppercase font-bold text-slate-400">All-Time Lbs</p>
+                                                </div>
+                                                <div className="text-center">
+                                                    <p className="text-2xl font-bold text-blue-500">{allTimeStats.count.toLocaleString()}</p>
+                                                    <p className="text-[10px] uppercase font-bold text-slate-400">All-Time Units</p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </Card>
                                 )}
-                            </div>
-
-                            {/* RIGHT SIDEBAR */}
-                            <div className="space-y-6">
-                                {appSettings.showProtocols && (
-                                    <Card className="p-6 bg-slate-900 text-slate-100 border-none relative overflow-hidden group">
-                                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><AlertTriangle size={80}/></div>
-                                        <h3 className="font-bold mb-4 flex items-center border-b border-slate-700 pb-3"><ShieldCheck className="mr-2 text-emerald-400" size={18}/> Safety Protocols</h3>
-                                        <ul className="text-xs space-y-3 font-medium opacity-90 relative z-10">
-                                            <li className="flex gap-3 items-start"><Box size={14} className="mt-0.5 shrink-0 text-slate-400"/><span><strong>Wet Cells:</strong> Keep upright. High acid risk.</span></li>
-                                            <li className="flex gap-3 items-start"><Scale size={14} className="mt-0.5 shrink-0 text-slate-400"/><span><strong>Heavy Loads:</strong> Team lift &gt;50lbs.</span></li>
-                                            <li className="flex gap-3 items-start"><Zap size={14} className="mt-0.5 shrink-0 text-slate-400"/><span><strong>Lithium:</strong> Tape terminals. Fire risk.</span></li>
-                                        </ul>
-                                    </Card>
-                                )}
-                                
-                                <Card className="p-6">
-                                    <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-sm">Quick Actions</h3></div>
-                                    <div className="space-y-2">
-                                        <button onClick={() => window.open('https://www.google.com/search?q=battery+recycling+regulations', '_blank')} className="w-full py-2.5 border rounded-lg text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center"><SearchCode size={14} className="mr-2"/> Regulatory Check</button>
-                                        <button onClick={() => navigator.clipboard.writeText(`${appSettings.companyName} Report:\n${activeLogs.length} Records\n${activeLogs.reduce((a,l)=>a+Number(l.weight),0)} lbs`).then(()=>alert("Copied!"))} className="w-full py-2.5 border rounded-lg text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center"><FileText size={14} className="mr-2"/> Copy Summary</button>
-                                    </div>
-                                </Card>
                             </div>
 
                         </div>
