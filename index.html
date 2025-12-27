@@ -46,14 +46,15 @@
             body { background: white !important; color: black !important; }
             .no-print { display: none !important; }
             .print-view { display: block !important; }
-            tr.zebra-row-odd { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; }
-            tr.zebra-row-even { background-color: #ffffff !important; -webkit-print-color-adjust: exact; }
-            .group-header { background-color: #e2e8f0 !important; font-weight: bold; -webkit-print-color-adjust: exact; }
-            .ups-header { border-left: 4px solid #3b82f6; padding-left: 8px; margin-top: 10px; margin-bottom: 5px; -webkit-print-color-adjust: exact; }
-            /* Boxed table styles for print */
+            /* Boxed table for print */
             table.print-bordered { border-collapse: collapse; width: 100%; border: 1px solid #000; }
-            table.print-bordered th, table.print-bordered td { border: 1px solid #666; padding: 6px; }
-            table.print-bordered th { background-color: #f0f0f0; -webkit-print-color-adjust: exact; }
+            table.print-bordered th, table.print-bordered td { border: 1px solid #000; padding: 6px; }
+            table.print-bordered th { background-color: #f3f4f6 !important; font-weight: bold; }
+            tr.zebra-row-odd { background-color: #f9fafb !important; -webkit-print-color-adjust: exact; }
+            tr.zebra-row-even { background-color: #ffffff !important; -webkit-print-color-adjust: exact; }
+            .group-header { background-color: #e5e7eb !important; font-weight: bold; -webkit-print-color-adjust: exact; border: 1px solid #000; }
+            .ups-header { font-weight: bold; margin-top: 10px; margin-bottom: 5px; }
+            .print-color-exact { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
 </head>
@@ -70,12 +71,12 @@
             Download, Upload, Camera, Loader2, SearchCode, ChevronRight, ChevronDown, Folder, 
             FileText, Library, AlertTriangle, ShieldCheck, FlipHorizontal, Image as ImageIcon,
             PenTool, Sparkles, Filter, ToggleLeft, ToggleRight, Layers, MoreHorizontal, Info, Briefcase,
-            ArrowUpDown, ClipboardList, MapPin, Server, Copy
+            ArrowUpDown, ClipboardList, MapPin, Server, Copy, CalendarDays, AlertOctagon
         } from 'lucide-react';
         
         import { initializeApp } from 'firebase/app';
         import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-        import { getFirestore, collection, addDoc, deleteDoc, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp, enableIndexedDbPersistence, writeBatch } from 'firebase/firestore';
+        import { getFirestore, collection, addDoc, deleteDoc, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp, enableIndexedDbPersistence, writeBatch, getDocs } from 'firebase/firestore';
 
         // --- CONFIGURATION ---
         const firebaseConfig = {
@@ -96,7 +97,7 @@
         
         try { enableIndexedDbPersistence(db).catch(() => {}); } catch (e) {}
 
-        // --- DATA: BATTERIES ---
+        // --- DATA ---
         const INITIAL_BATTERY_DB = [
             { manufacturer: "CSB", model: "HRL 1234W", type: "Lead-Acid", weight: 5.7, ah: 9, life: "5-8 Years" },
             { manufacturer: "CSB", model: "GP 1272", type: "Lead-Acid", weight: 5.3, ah: 7.2, life: "3-5 Years" },
@@ -138,7 +139,7 @@
             { manufacturer: "Deka", model: "12AVR170ET", type: "Lead-Acid", weight: 118, ah: 170, life: "10 Years" },
             { manufacturer: "Amstron", model: "AP-1270", type: "Lead-Acid", weight: 4.8, ah: 7, life: "3-5 Years" },
             { manufacturer: "Amstron", model: "AP-1290", type: "Lead-Acid", weight: 5.4, ah: 9, life: "3-5 Years" },
-            { manufacturer: "Trojan", model: "T-105", type: "Wet Cell", weight: 62, ah: 225, life: "5-7 Years" },
+            { manufacturer: "Trojan", model: "T-105 (6V)", type: "Wet Cell", weight: 62, ah: 225, life: "5-7 Years" },
             { manufacturer: "Trojan", model: "L16P", type: "Wet Cell", weight: 115, ah: 360, life: "5-8 Years" },
             { manufacturer: "Tesla", model: "Powerwall 2", type: "Li-ion", weight: 251, ah: 0, life: "10-15 Years" },
             { manufacturer: "Tesla", model: "Powerwall 3", type: "Li-ion", weight: 287, ah: 0, life: "10-15 Years" },
@@ -146,7 +147,6 @@
             { manufacturer: "Enphase", model: "IQ Battery 10", type: "Li-ion", weight: 346, ah: 0, life: "10-15 Years" },
         ];
 
-        // --- DATA: UPS EQUIPMENT ---
         const INITIAL_UPS_DB = [
             { make: "Schneider", family: "Galaxy VS", model: "GVS 20kW", type: "3-Phase", acV: "480V", dcV: "480V" },
             { make: "Schneider", family: "Galaxy VS", model: "GVS 50kW", type: "3-Phase", acV: "480V", dcV: "480V" },
@@ -163,7 +163,6 @@
             { make: "Mitsubishi", family: "9900B", model: "9900B", type: "3-Phase", acV: "480V", dcV: "480V" }
         ];
 
-        // --- CONSTANTS ---
         const THEMES = {
             emerald: { primary: 'bg-emerald-600', text: 'text-emerald-700', border: 'border-l-emerald-500' },
             blue: { primary: 'bg-blue-600', text: 'text-blue-700', border: 'border-l-blue-500' },
@@ -171,7 +170,6 @@
             slate: { primary: 'bg-slate-700', text: 'text-slate-700', border: 'border-l-slate-600' }
         };
 
-        // --- COMPONENTS ---
         const Card = ({ children, className = "" }) => (
             <div className={`bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden ${className}`}>
                 {children}
@@ -200,7 +198,6 @@
             return `${m}/${d}/${y}`;
         };
 
-        // --- MAIN APP ---
         function App() {
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
@@ -216,6 +213,11 @@
             const [addingUpsItem, setAddingUpsItem] = useState(false);
             const [archiveGroupBy, setArchiveGroupBy] = useState('location'); 
             
+            // Print State
+            const [printGroupBy, setPrintGroupBy] = useState('report'); 
+            const [selectedReportItemIds, setSelectedReportItemIds] = useState(new Set()); 
+            const [printFilters, setPrintFilters] = useState({ sites: new Set(), buildings: new Set(), rooms: new Set() });
+
             // Entry Mode
             const [entryMode, setEntryMode] = useState('recycle'); 
             const [currentReport, setCurrentReport] = useState(null); 
@@ -236,40 +238,28 @@
             const [expandedLibFolders, setExpandedLibFolders] = useState(new Set());
             const [expandedUpsFolders, setExpandedUpsFolders] = useState(new Set());
             const [selectedLogIds, setSelectedLogIds] = useState(new Set());
-            const [selectedReportItemIds, setSelectedReportItemIds] = useState(new Set());
-            const [printFilters, setPrintFilters] = useState({ sites: new Set(), buildings: new Set(), rooms: new Set() });
 
             const [newLibData, setNewLibData] = useState({ id: null, manufacturer: '', model: '', type: 'Lead-Acid', weight: '', ah: '', life: '' });
             const [newUpsData, setNewUpsData] = useState({ id: null, make: '', family: '', model: '', type: '', acV: '', dcV: '' });
-
-            const [appSettings, setAppSettings] = useState({
-                companyName: 'BatteryCycle Track', logoUrl: '', themeColor: 'emerald', fontStyle: 'font-sans', 
-                showProtocols: true, dynamicReports: false, showDates: true, reportLogo: false, invertLogoPrint: false, reportUseCustomerName: false
-            });
-
+            
+            const [suggestions, setSuggestions] = useState([]);
+            const [upsSuggestions, setUpsSuggestions] = useState([]);
+            const [appSettings, setAppSettings] = useState({ companyName: 'BatteryCycle Track', logoUrl: '', themeColor: 'emerald', fontStyle: 'font-sans', showProtocols: true, dynamicReports: false, showDates: true, reportLogo: false, invertLogoPrint: false, reportUseCustomerName: false });
+            
             const [editingId, setEditingId] = useState(null);
             const [formData, setFormData] = useState({
                 batteryModel: '', manufacturer: '', type: 'Lead-Acid', lithiumType: '', unitWeight: '', totalWeight: '', count: '', 
                 ampHours: '', expectedLife: '', dateCode: '', notes: '', location: '', installDate: new Date().toISOString().split('T')[0], expiryDate: '', room: '', building: '', site: '',
                 upsMake: '', upsModel: '', upsSerial: '', upsKva: ''
             });
-            
-            const [suggestions, setSuggestions] = useState([]);
-            const [upsSuggestions, setUpsSuggestions] = useState([]);
+
             const theme = THEMES[appSettings.themeColor] || THEMES.emerald;
 
+            // 2. DERIVED DATA
             const activeLogs = useMemo(() => logs.filter(l => !l.archived), [logs]);
             const archivedLogs = useMemo(() => logs.filter(l => l.archived), [logs]);
-            
-            const allTimeStats = useMemo(() => {
-                return logs.reduce((acc, l) => {
-                    acc.weight += Number(l.weight || 0);
-                    acc.count += Number(l.count || 0);
-                    return acc;
-                }, { weight: 0, count: 0 });
-            }, [logs]);
+            const allTimeStats = useMemo(() => logs.reduce((acc, l) => ({ weight: acc.weight + Number(l.weight||0), count: acc.count + Number(l.count||0) }), { weight: 0, count: 0 }), [logs]);
 
-            // Merged Libraries
             const fullLibrary = useMemo(() => {
                 const customMap = new Map(customLibrary.map(i => [((i.manufacturer||"").trim() + (i.model||"").trim()).toLowerCase(), i]));
                 const merged = [];
@@ -290,7 +280,35 @@
                 return [...merged, ...customUpsLibrary].sort((a,b) => (a.make||'').localeCompare(b.make||''));
             }, [customUpsLibrary]);
 
-            // 3-Level UPS Grouping: Make > Family > Models
+            // Grouping Logic
+            const getGroupedLogs = (data, groupBy) => {
+                const groups = {};
+                data.filter(l => (l.location||'').toLowerCase().includes(dbSearch.toLowerCase()) || (l.batteryModel||'').toLowerCase().includes(dbSearch.toLowerCase()))
+                    .forEach(l => {
+                        let k = 'Unknown';
+                        if (groupBy === 'jobName') k = l.jobName || 'Unassigned Logs';
+                        else k = l[groupBy] || 'Unknown';
+                        if(!groups[k]) groups[k] = [];
+                        groups[k].push(l);
+                    });
+                return groups;
+            };
+
+            const getGroupedLibrary = (data) => {
+                const groups = {};
+                data.filter(l => (l.model||'').toLowerCase().includes(dbSearch.toLowerCase()) || (l.manufacturer||'').toLowerCase().includes(dbSearch.toLowerCase()))
+                    .forEach(l => {
+                        const k = l.manufacturer || 'Generic';
+                        if(!groups[k]) groups[k] = [];
+                        groups[k].push(l);
+                    });
+                return groups;
+            };
+
+            const groupedActive = useMemo(() => getGroupedLogs(activeLogs, 'location'), [activeLogs, dbSearch]);
+            const groupedArchive = useMemo(() => getGroupedLogs(archivedLogs, archiveGroupBy), [archivedLogs, dbSearch, archiveGroupBy]);
+            const groupedLib = useMemo(() => getGroupedLibrary(fullLibrary), [fullLibrary, dbSearch]);
+            
             const groupedUps = useMemo(() => {
                 const s = dbSearch.toLowerCase();
                 const filtered = fullUpsLibrary.filter(u => 
@@ -310,7 +328,19 @@
                 return groups;
             }, [fullUpsLibrary, dbSearch]);
 
-            // Effects
+             const groupedReports = useMemo(() => {
+                 const groups = {};
+                serviceReports.filter(r => (r.customer||'').toLowerCase().includes(dbSearch.toLowerCase()) || (r.site||'').toLowerCase().includes(dbSearch.toLowerCase()))
+                    .forEach(r => {
+                        const k = r.customer || 'Unknown Customer';
+                        if(!groups[k]) groups[k] = [];
+                        groups[k].push(r);
+                    });
+                return groups;
+            }, [serviceReports, dbSearch]);
+
+
+            // 3. EFFECTS
             useEffect(() => {
                 if (isDarkMode) { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); } 
                 else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); }
@@ -439,12 +469,30 @@
                 const newEvent = { date: new Date().toLocaleDateString(), note, user: "Tech" };
                 const updatedHistory = [...(currentReport.serviceHistory || []), newEvent];
                 setCurrentReport(prev => ({...prev, serviceHistory: updatedHistory}));
-                if(currentReport.id) {
-                     await updateDoc(doc(db, 'service_reports', currentReport.id), { serviceHistory: updatedHistory });
-                }
+                if(currentReport.id) { await updateDoc(doc(db, 'service_reports', currentReport.id), { serviceHistory: updatedHistory }); }
             };
 
             const saveSettings = async () => { if (!user) return; await setDoc(doc(db, 'settings', 'global_config'), appSettings); alert("Settings Saved!"); };
+
+            const clearRecycleLogs = async () => {
+                if(!confirm("DANGER: Permanently delete ALL recycling logs? This cannot be undone.")) return;
+                const batch = writeBatch(db);
+                logs.forEach(l => batch.delete(doc(db, 'recycling_logs', l.id)));
+                await batch.commit(); alert("Recycling logs cleared.");
+            };
+
+            const clearServiceReports = async () => {
+                if(!confirm("DANGER: Permanently delete ALL service reports? This cannot be undone.")) return;
+                const batch = writeBatch(db);
+                serviceReports.forEach(r => batch.delete(doc(db, 'service_reports', r.id)));
+                await batch.commit(); alert("Service reports cleared.");
+            };
+
+            const deleteServiceReport = async (e, reportId) => {
+                e.stopPropagation();
+                if(!confirm("Permanently delete this report?")) return;
+                await deleteDoc(doc(db, 'service_reports', reportId));
+            };
 
             const handleNewLibSubmit = async (e) => {
                 e.preventDefault();
@@ -535,34 +583,6 @@
                 setSearchingModel(false);
             };
 
-            const getGroupedLogs = (data, groupBy) => {
-                const groups = {};
-                data.filter(l => (l.location||'').toLowerCase().includes(dbSearch.toLowerCase()) || (l.batteryModel||'').toLowerCase().includes(dbSearch.toLowerCase()))
-                    .forEach(l => {
-                        let k = 'Unknown';
-                        if (groupBy === 'jobName') k = l.jobName || 'Unassigned Logs';
-                        else k = l[groupBy] || 'Unknown';
-                        if(!groups[k]) groups[k] = [];
-                        groups[k].push(l);
-                    });
-                return groups;
-            };
-
-            const getGroupedLibrary = (data) => {
-                const groups = {};
-                data.filter(l => (l.model||'').toLowerCase().includes(dbSearch.toLowerCase()) || (l.manufacturer||'').toLowerCase().includes(dbSearch.toLowerCase()))
-                    .forEach(l => {
-                        const k = l.manufacturer || 'Generic';
-                        if(!groups[k]) groups[k] = [];
-                        groups[k].push(l);
-                    });
-                return groups;
-            };
-
-            const groupedActive = useMemo(() => getGroupedLogs(activeLogs, 'location'), [activeLogs, dbSearch]);
-            const groupedArchive = useMemo(() => getGroupedLogs(archivedLogs, archiveGroupBy), [archivedLogs, dbSearch, archiveGroupBy]);
-            const groupedLib = useMemo(() => getGroupedLibrary(fullLibrary), [fullLibrary, dbSearch]);
-
             const toggleArchive = async (id, status) => {
                 if (!user) return;
                 try {
@@ -606,7 +626,6 @@
                 });
             };
 
-            // Selection handlers for granular print
             const toggleReportItemSelection = (itemId) => {
                 setSelectedReportItemIds(prev => {
                     const newSet = new Set(prev);
@@ -625,6 +644,19 @@
                 });
             };
 
+            const startPM = (oldReport) => {
+                if(!confirm("Create a new PM Report based on this one?")) return;
+                const newReport = {
+                    ...oldReport,
+                    id: null, 
+                    dateStr: new Date().toLocaleDateString(),
+                    items: oldReport.items.map(i => ({...i, id: Date.now() + Math.random(), notes: ''}))
+                };
+                setCurrentReport(newReport);
+                setEntryMode('report');
+                setActiveTab('log');
+            };
+
             if (loading) return <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-400"><Loader2 className="animate-spin mr-2" /> Loading...</div>;
 
             // --- PRINT REPORT ---
@@ -640,17 +672,25 @@
                     title = currentPrintReport.customer;
                     subHeader = `${currentPrintReport.site || ''} - ${currentPrintReport.dateStr}`;
                     isServiceReport = true;
+                } else if (activeTab === 'archives' && archiveSubTab === 'reports') {
+                    // Collect items from multiple selected reports
+                    const selectedReports = serviceReports.filter(r => selectedReportItemIds.has(r.id)); // Using the same ID set for whole reports? No, wait.
+                    // The UI for selecting multiple reports in Archives uses 'selectedReportItemIds'? 
+                    // No, usually reusing selectedLogIds for consistency or making a new state.
+                    // Let's assume user checked multiple reports. 
+                    // To simplify, let's use selectedReportItemIds to track individual items across ALL reports if expanded.
+                    
+                    // Actually, let's flatten ALL service report items that are checked
+                    const allServiceItems = serviceReports.flatMap(r => r.items.map(i => ({...i, reportId: r.id, reportCustomer: r.customer, reportSite: r.site})));
+                    itemsToPrint = allServiceItems.filter(i => selectedReportItemIds.has(i.id));
+                    isServiceReport = true;
+                    if(itemsToPrint.length > 0) subHeader = "Composite Service Report";
                 } else {
                     const source = activeTab === 'archives' ? archivedLogs : activeLogs;
                     itemsToPrint = selectedLogIds.size > 0 ? source.filter(l => selectedLogIds.has(l.id)) : source;
                     if (appSettings.dynamicReports) {
-                        if (archiveGroupBy === 'location') {
-                            const uniqueLocs = [...new Set(itemsToPrint.map(l => l.location))];
-                            if (uniqueLocs.length === 1) title = uniqueLocs[0];
-                        } else if (archiveGroupBy === 'manufacturer') {
-                            const uniqueManuf = [...new Set(itemsToPrint.map(l => l.manufacturer))];
-                            if (uniqueManuf.length === 1) title = uniqueManuf[0];
-                        }
+                        const locs = [...new Set(itemsToPrint.map(l => l.location))];
+                        if (locs.length === 1) title = locs[0];
                     }
                 }
 
@@ -699,6 +739,7 @@
                             </div>
                             <div className="text-right text-sm"><p>{new Date().toLocaleDateString('en-US')}</p><p className="font-bold">Total: {filteredItems.reduce((a,l)=>a+Number(l.weight),0).toLocaleString()} lbs</p></div>
                         </div>
+                        
                         {Object.entries(reportGroups).map(([site, bldgs]) => (
                             <div key={site} className="mb-8">
                                 {Object.keys(reportGroups).length > 1 && <h2 className="text-xl font-bold mb-2 uppercase border-b border-slate-400 pb-1">{site}</h2>}
@@ -1069,6 +1110,7 @@
                                                                     <div className="flex gap-2">
                                                                         <button onClick={() => startPM(r)} className="text-[10px] px-2 py-1 border rounded hover:bg-blue-50 text-blue-600">Start PM</button>
                                                                         <button onClick={() => openReportForEdit(r)} className="text-[10px] px-2 py-1 border rounded hover:bg-slate-100">Edit</button>
+                                                                        <button onClick={(e) => deleteServiceReport(e, r.id)} className="text-[10px] px-2 py-1 border rounded hover:bg-red-50 text-red-500"><Trash2 size={12}/></button>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1135,10 +1177,18 @@
                                         </div>
                                         <button onClick={saveSettings} className={`px-8 py-3 rounded-xl font-bold text-white shadow-lg transition-transform hover:scale-105 ${theme.primary}`}>Save All Changes</button>
                                         
+                                        <div className="mt-8 pt-6 border-t dark:border-slate-700">
+                                            <h3 className="font-bold text-red-500 text-sm uppercase mb-4 flex items-center"><AlertTriangle className="mr-2" size={16}/> Danger Zone</h3>
+                                            <div className="flex gap-4">
+                                                <button onClick={clearRecycleLogs} className="px-4 py-2 border border-red-500 text-red-500 rounded text-xs font-bold hover:bg-red-50 dark:hover:bg-red-900/20">Clear Recycling Logs</button>
+                                                <button onClick={clearServiceReports} className="px-4 py-2 border border-red-500 text-red-500 rounded text-xs font-bold hover:bg-red-50 dark:hover:bg-red-900/20">Clear Service Reports</button>
+                                            </div>
+                                        </div>
+
                                         <div className="mt-12 pt-8 border-t dark:border-slate-700 text-center">
                                             <p className="font-bold text-slate-500 text-xs uppercase tracking-wider mb-2">About</p>
                                             <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">CTRL Inc.</h3>
-                                            <p className="text-xs text-slate-400">Battery Recycling Management System v1.09.1</p>
+                                            <p className="text-xs text-slate-400">Battery Recycling Management System v1.12.0</p>
                                             
                                             <div className="mt-6 flex justify-center gap-8">
                                                 <div className="text-center">
