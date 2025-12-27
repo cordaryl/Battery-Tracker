@@ -49,6 +49,7 @@
             tr.zebra-row-odd { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; }
             tr.zebra-row-even { background-color: #ffffff !important; -webkit-print-color-adjust: exact; }
             .group-header { background-color: #e2e8f0 !important; font-weight: bold; -webkit-print-color-adjust: exact; }
+            .ups-header { border-left: 4px solid #3b82f6; padding-left: 8px; margin-top: 10px; margin-bottom: 5px; -webkit-print-color-adjust: exact; }
             .print-bordered { border-collapse: collapse; width: 100%; }
             .print-bordered th, .print-bordered td { border: 1px solid #cbd5e1; padding: 4px; }
         }
@@ -67,7 +68,7 @@
             Download, Upload, Camera, Loader2, SearchCode, ChevronRight, ChevronDown, Folder, 
             FileText, Library, AlertTriangle, ShieldCheck, FlipHorizontal, Image as ImageIcon,
             PenTool, Sparkles, Filter, ToggleLeft, ToggleRight, Layers, MoreHorizontal, Info, Briefcase,
-            ArrowUpDown, ClipboardList, MapPin, Server
+            ArrowUpDown, ClipboardList, MapPin, Server, Copy
         } from 'lucide-react';
         
         import { initializeApp } from 'firebase/app';
@@ -84,7 +85,7 @@
             appId: "1:622740135754:web:05b76f79e7d1c2adeaabb3",
             measurementId: "G-7DGFYQ72S1"
         };
-        const GEMINI_API_KEY = ""; 
+        const GEMINI_API_KEY = ""; // Optional
 
         // --- INITIALIZE FIREBASE ---
         const app = initializeApp(firebaseConfig);
@@ -93,7 +94,7 @@
         
         try { enableIndexedDbPersistence(db).catch(() => {}); } catch (e) {}
 
-        // --- DATA ---
+        // --- DATA: BATTERIES ---
         const INITIAL_BATTERY_DB = [
             // CSB
             { manufacturer: "CSB", model: "HRL 1234W", type: "Lead-Acid", weight: 5.7, ah: 9, life: "5-8 Years" },
@@ -168,6 +169,42 @@
             { manufacturer: "Enphase", model: "IQ Battery 10", type: "Li-ion", weight: 346, ah: 0, life: "10-15 Years" },
         ];
 
+        // --- DATA: UPS EQUIPMENT ---
+        const INITIAL_UPS_DB = [
+            // Schneider / APC
+            { make: "Schneider", family: "Galaxy VS", model: "GVS 20kW", type: "3-Phase", acV: "480V", dcV: "480V" },
+            { make: "Schneider", family: "Galaxy VS", model: "GVS 50kW", type: "3-Phase", acV: "480V", dcV: "480V" },
+            { make: "Schneider", family: "Galaxy VS", model: "GVS 100kW", type: "3-Phase", acV: "480V", dcV: "480V" },
+            { make: "Schneider", family: "Symmetra PX", model: "PX 48kW", type: "3-Phase", acV: "480V", dcV: "384V" },
+            { make: "Schneider", family: "Symmetra PX", model: "PX 100kW", type: "3-Phase", acV: "480V", dcV: "384V" },
+            { make: "Schneider", family: "Symmetra PX", model: "PX 250/500", type: "3-Phase", acV: "480V", dcV: "384V" },
+            { make: "APC", family: "Smart-UPS", model: "SRT3000", type: "Single Phase", acV: "120V", dcV: "96V" },
+            { make: "APC", family: "Smart-UPS", model: "SRT5000", type: "Single Phase", acV: "208V", dcV: "192V" },
+            { make: "APC", family: "Smart-UPS", model: "SRT10000", type: "Single Phase", acV: "208V", dcV: "192V" },
+
+            // Eaton
+            { make: "Eaton", family: "9395", model: "9395-275", type: "3-Phase", acV: "480V", dcV: "480V" },
+            { make: "Eaton", family: "9395", model: "9395-550", type: "3-Phase", acV: "480V", dcV: "480V" },
+            { make: "Eaton", family: "93PM", model: "93PM-50", type: "3-Phase", acV: "480V", dcV: "432V" },
+            { make: "Eaton", family: "93PM", model: "93PM-150", type: "3-Phase", acV: "480V", dcV: "432V" },
+            { make: "Eaton", family: "9PX", model: "9PX6K", type: "Single Phase", acV: "208V", dcV: "180V" },
+            
+            // Vertiv
+            { make: "Vertiv", family: "Liebert EXL", model: "S1 600kVA", type: "3-Phase", acV: "480V", dcV: "540V" },
+            { make: "Vertiv", family: "Liebert EXL", model: "S1 1200kVA", type: "3-Phase", acV: "480V", dcV: "540V" },
+            { make: "Vertiv", family: "GXT5", model: "GXT5-3000", type: "Single Phase", acV: "120V", dcV: "72V" },
+            { make: "Vertiv", family: "GXT5", model: "GXT5-6000", type: "Single Phase", acV: "208V", dcV: "144V" },
+
+            // Toshiba
+            { make: "Toshiba", family: "G9000", model: "100kVA", type: "3-Phase", acV: "480V", dcV: "288V" },
+            { make: "Toshiba", family: "G9000", model: "225kVA", type: "3-Phase", acV: "480V", dcV: "288V" },
+            { make: "Toshiba", family: "4400", model: "30kVA", type: "3-Phase", acV: "208V", dcV: "288V" },
+            
+            // Mitsubishi
+            { make: "Mitsubishi", family: "9900B", model: "9900B", type: "3-Phase", acV: "480V", dcV: "480V" },
+            { make: "Mitsubishi", family: "Summit", model: "Summit Series", type: "3-Phase", acV: "480V", dcV: "480V" }
+        ];
+
         const THEMES = {
             emerald: { primary: 'bg-emerald-600', text: 'text-emerald-700', border: 'border-l-emerald-500' },
             blue: { primary: 'bg-blue-600', text: 'text-blue-700', border: 'border-l-blue-500' },
@@ -207,7 +244,7 @@
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
             const [activeTab, setActiveTab] = useState('dashboard');
-            const [dbSubTab, setDbSubTab] = useState('explorer');
+            const [dbSubTab, setDbSubTab] = useState('batteries');
             const [archiveSubTab, setArchiveSubTab] = useState('recycling');
             const [isDarkMode, setIsDarkMode] = useState(() => { try { return localStorage.getItem('theme') === 'dark'; } catch(e) { return false; } });
             const [printMode, setPrintMode] = useState(false);
@@ -215,11 +252,9 @@
             const [scanning, setScanning] = useState(false);
             const [searchingModel, setSearchingModel] = useState(false);
             const [addingLibItem, setAddingLibItem] = useState(false);
+            const [addingUpsItem, setAddingUpsItem] = useState(false);
             const [archiveGroupBy, setArchiveGroupBy] = useState('location'); 
             
-            // Print Filter States
-            const [printFilters, setPrintFilters] = useState({ sites: new Set(), buildings: new Set(), rooms: new Set() });
-
             // Entry Mode
             const [entryMode, setEntryMode] = useState('recycle'); 
             const [currentReport, setCurrentReport] = useState(null); 
@@ -229,6 +264,7 @@
             const [logs, setLogs] = useState([]);
             const [serviceReports, setServiceReports] = useState([]);
             const [customLibrary, setCustomLibrary] = useState([]);
+            const [customUpsLibrary, setCustomUpsLibrary] = useState([]);
             const [savedSources, setSavedSources] = useState([]);
             const [savedData, setSavedData] = useState({ customers: [], sites: [], buildings: [], rooms: [] });
             
@@ -237,7 +273,9 @@
             const [expandedFolders, setExpandedFolders] = useState(new Set());
             const [expandedLibFolders, setExpandedLibFolders] = useState(new Set());
             const [selectedLogIds, setSelectedLogIds] = useState(new Set());
+            
             const [newLibData, setNewLibData] = useState({ id: null, manufacturer: '', model: '', type: 'Lead-Acid', weight: '', ah: '', life: '' });
+            const [newUpsData, setNewUpsData] = useState({ id: null, make: '', family: '', model: '', type: '', acV: '', dcV: '' });
 
             const [appSettings, setAppSettings] = useState({
                 companyName: 'BatteryCycle Track', logoUrl: '', themeColor: 'emerald', fontStyle: 'font-sans', 
@@ -252,6 +290,7 @@
             });
             
             const [suggestions, setSuggestions] = useState([]);
+            const [upsSuggestions, setUpsSuggestions] = useState([]);
             const theme = THEMES[appSettings.themeColor] || THEMES.emerald;
 
             const activeLogs = useMemo(() => logs.filter(l => !l.archived), [logs]);
@@ -265,21 +304,26 @@
                 }, { weight: 0, count: 0 });
             }, [logs]);
 
+            // Libraries
             const fullLibrary = useMemo(() => {
-                const customMap = new Map();
-                customLibrary.forEach(i => {
-                    const key = ((i.manufacturer||"").trim() + (i.model||"").trim()).toLowerCase();
-                    customMap.set(key, i);
-                });
+                const customMap = new Map(customLibrary.map(i => [((i.manufacturer||"").trim() + (i.model||"").trim()).toLowerCase(), i]));
                 const merged = [];
                 INITIAL_BATTERY_DB.forEach(initItem => {
                     const key = ((initItem.manufacturer||"").trim() + (initItem.model||"").trim()).toLowerCase();
-                    if (!customMap.has(key)) {
-                        merged.push(initItem);
-                    }
+                    if (!customMap.has(key)) merged.push(initItem);
                 });
                 return [...merged, ...customLibrary].sort((a,b) => (a.manufacturer||'').localeCompare(b.manufacturer||''));
             }, [customLibrary]);
+
+            const fullUpsLibrary = useMemo(() => {
+                const customMap = new Map(customUpsLibrary.map(i => [((i.make||"").trim() + (i.model||"").trim()).toLowerCase(), i]));
+                const merged = [];
+                INITIAL_UPS_DB.forEach(initItem => {
+                    const key = ((initItem.make||"").trim() + (initItem.model||"").trim()).toLowerCase();
+                    if (!customMap.has(key)) merged.push(initItem);
+                });
+                return [...merged, ...customUpsLibrary].sort((a,b) => (a.make||'').localeCompare(b.make||''));
+            }, [customUpsLibrary]);
 
             // Effects
             useEffect(() => {
@@ -307,10 +351,11 @@
                     setSavedData({ customers: Array.from(customers), sites: Array.from(sites), buildings: Array.from(buildings), rooms: Array.from(rooms) });
                 });
                 const unsubLib = onSnapshot(collection(db, 'custom_library'), s => setCustomLibrary(s.docs.map(d => ({id:d.id, ...d.data()}))));
+                const unsubUpsLib = onSnapshot(collection(db, 'custom_ups_library'), s => setCustomUpsLibrary(s.docs.map(d => ({id:d.id, ...d.data()}))));
                 const unsubSrc = onSnapshot(collection(db, 'saved_sources'), s => setSavedSources(s.docs.map(d => String(d.data().name))));
                 getDoc(doc(db, 'settings', 'global_config')).then(s => s.exists() && setAppSettings(prev => ({...prev, ...s.data()})));
                 setLoading(false);
-                return () => { unsubLogs(); unsubReports(); unsubLib(); unsubSrc(); };
+                return () => { unsubLogs(); unsubReports(); unsubLib(); unsubUpsLib(); unsubSrc(); };
             }, [user]);
 
             useEffect(() => {
@@ -348,6 +393,15 @@
                     } else {
                         setCurrentReport(prev => ({ ...prev, items: [...prev.items, newItem] }));
                     }
+
+                    // Auto-Add UPS
+                    const upsKey = ((formData.upsMake||"").trim() + (formData.upsModel||"").trim()).toLowerCase();
+                    const upsExists = fullUpsLibrary.some(u => ((u.make||"").trim() + (u.model||"").trim()).toLowerCase() === upsKey);
+                    if (!upsExists && formData.upsMake && formData.upsModel) {
+                        await addDoc(collection(db, 'custom_ups_library'), { make: formData.upsMake, model: formData.upsModel, type: 'Other' });
+                    }
+
+                    // Keep context
                     setFormData(prev => ({...prev, batteryModel: '', manufacturer: '', unitWeight: '', totalWeight: '', count: '', ampHours: '', expectedLife: '', dateCode: '', notes: ''})); 
                 } else {
                     try {
@@ -361,101 +415,73 @@
                         }
 
                         if(editingId) {
-                            // Check if doc exists before update to prevent crash
-                            try {
-                                await updateDoc(doc(db, 'recycling_logs', editingId), payload);
-                            } catch (err) {
-                                // If doc missing (e.g. from a report plan draft), create it
-                                await setDoc(doc(db, 'recycling_logs', editingId), {...payload, createdAt: serverTimestamp()});
-                            }
+                            try { await updateDoc(doc(db, 'recycling_logs', editingId), payload); } 
+                            catch (err) { await setDoc(doc(db, 'recycling_logs', editingId), {...payload, createdAt: serverTimestamp()}); }
                         }
                         else await addDoc(collection(db, 'recycling_logs'), {...payload, createdAt: serverTimestamp()});
                         
                         setEditingId(null);
                         setFormData({ batteryModel: '', manufacturer: '', type: 'Lead-Acid', lithiumType: '', unitWeight: '', totalWeight: '', count: '', ampHours: '', expectedLife: '', dateCode: '', notes: '', location: '', installDate: new Date().toISOString().split('T')[0], expiryDate: '', room: '', building: '', site: '', upsMake: '', upsModel: '', upsSerial: '', upsKva: '' });
                         setActiveTab('dashboard');
-                    } catch(err) { console.error(err); alert("Error saving. Check numeric fields."); }
+                    } catch(err) { console.error(err); alert("Error saving."); }
                 }
             };
 
-            const startEditReportItem = (item, index) => {
-                setFormData(item);
-                setEditingReportItemIndex(index);
-            };
+            const startEditReportItem = (item, index) => { setFormData(item); setEditingReportItemIndex(index); };
 
             const saveReportToDb = async () => {
                 if (!currentReport || currentReport.items.length === 0) return;
-                if (!confirm("Save this report? You can edit it later in Archives.")) return;
+                if (!confirm("Save this report?")) return;
                 try {
-                    const reportData = {
-                        ...currentReport,
-                        lastModified: serverTimestamp(),
-                        dateStr: currentReport.dateStr || new Date().toLocaleDateString()
-                    };
-
-                    if (currentReport.id) {
-                        await updateDoc(doc(db, 'service_reports', currentReport.id), reportData);
-                    } else {
-                        await addDoc(collection(db, 'service_reports'), {
-                           ...reportData,
-                           createdAt: serverTimestamp()
-                        });
-                    }
-
-                    setCurrentReport(null);
-                    setEntryMode('recycle');
-                    setActiveTab('archives');
-                    setArchiveSubTab('reports');
-                    alert("Report Saved!");
+                    const reportData = { ...currentReport, lastModified: serverTimestamp(), dateStr: currentReport.dateStr || new Date().toLocaleDateString() };
+                    if (currentReport.id) await updateDoc(doc(db, 'service_reports', currentReport.id), reportData);
+                    else await addDoc(collection(db, 'service_reports'), { ...reportData, createdAt: serverTimestamp() });
+                    setCurrentReport(null); setEntryMode('recycle'); setActiveTab('archives'); setArchiveSubTab('reports'); alert("Report Saved!");
                 } catch (e) { console.error(e); }
             };
 
-            const openReportForEdit = (report) => {
-                setCurrentReport(report);
-                setEntryMode('report');
-                setActiveTab('log');
-                setArchiveSubTab('reports');
-            };
+            const openReportForEdit = (report) => { setCurrentReport(report); setEntryMode('report'); setActiveTab('log'); setArchiveSubTab('reports'); };
 
             const startPM = (oldReport) => {
-                if(!confirm("Create a new PM Report based on this one?")) return;
-                const newReport = {
-                    ...oldReport,
-                    id: null, 
-                    dateStr: new Date().toLocaleDateString(),
-                    items: oldReport.items.map(i => ({...i, id: Date.now() + Math.random(), notes: ''}))
-                };
-                setCurrentReport(newReport);
-                setEntryMode('report');
-                setActiveTab('log');
+                if(!confirm("Create new PM based on this report?")) return;
+                const newReport = { ...oldReport, id: null, dateStr: new Date().toLocaleDateString(), items: oldReport.items.map(i => ({...i, id: Date.now() + Math.random(), notes: ''})) };
+                setCurrentReport(newReport); setEntryMode('report'); setActiveTab('log');
             };
 
-            const saveSettings = async () => {
-                if (!user) return;
-                await setDoc(doc(db, 'settings', 'global_config'), appSettings);
-                alert("Settings Saved!");
-            };
+            const saveSettings = async () => { if (!user) return; await setDoc(doc(db, 'settings', 'global_config'), appSettings); alert("Settings Saved!"); };
 
             const handleNewLibSubmit = async (e) => {
                 e.preventDefault();
                 const dataToSave = { manufacturer: newLibData.manufacturer, model: newLibData.model, type: newLibData.type, weight: parseFloat(newLibData.weight)||0, ah: newLibData.ah, life: newLibData.life };
-                if(newLibData.id) { await updateDoc(doc(db, 'custom_library', newLibData.id), dataToSave); } 
-                else { await addDoc(collection(db, 'custom_library'), dataToSave); }
-                setAddingLibItem(false);
-                setNewLibData({ id: null, manufacturer: '', model: '', type: 'Lead-Acid', weight: '', ah: '', life: '' });
+                if(newLibData.id) await updateDoc(doc(db, 'custom_library', newLibData.id), dataToSave);
+                else await addDoc(collection(db, 'custom_library'), dataToSave);
+                setAddingLibItem(false); setNewLibData({ id: null, manufacturer: '', model: '', type: 'Lead-Acid', weight: '', ah: '', life: '' });
+            };
+
+            const handleNewUpsSubmit = async (e) => {
+                e.preventDefault();
+                const dataToSave = { make: newUpsData.make, family: newUpsData.family, model: newUpsData.model, type: newUpsData.type, acV: newUpsData.acV, dcV: newUpsData.dcV };
+                if(newUpsData.id) await updateDoc(doc(db, 'custom_ups_library', newUpsData.id), dataToSave);
+                else await addDoc(collection(db, 'custom_ups_library'), dataToSave);
+                setAddingUpsItem(false); setNewUpsData({ id: null, make: '', family: '', model: '', type: '', acV: '', dcV: '' });
             };
 
             const handleEditLibItem = (e, item) => {
                 e.stopPropagation();
                 setNewLibData({ id: item.id || null, manufacturer: item.manufacturer || '', model: item.model || '', type: item.type || 'Lead-Acid', weight: String(item.weight || ''), ah: String(item.ah || ''), life: String(item.life || '') });
-                setAddingLibItem(true);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                setAddingLibItem(true); window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            const handleEditUpsItem = (e, item) => {
+                e.stopPropagation();
+                setNewUpsData({ id: item.id || null, make: item.make || '', family: item.family || '', model: item.model || '', type: item.type || '', acV: item.acV || '', dcV: item.dcV || '' });
+                setAddingUpsItem(true); window.scrollTo({ top: 0, behavior: 'smooth' });
             };
             
-            const handleDeleteLibItem = async (e, item) => {
+            const handleDeleteLibItem = async (e, item, col) => {
                 e.stopPropagation();
                 if (!item.id) { alert("Cannot delete built-in items."); return; }
-                if(confirm("Delete this library item?")) await deleteDoc(doc(db, 'custom_library', item.id));
+                if(confirm("Delete item?")) await deleteDoc(doc(db, col, item.id));
             };
 
             const handleModelSearch = async (val) => {
@@ -465,10 +491,23 @@
                     setSuggestions(fullLibrary.filter(b => (b.model||'').toLowerCase().includes(s) || (b.manufacturer||'').toLowerCase().includes(s)));
                 } else setSuggestions([]);
             };
+            
+            const handleUpsSearch = (val) => {
+                setFormData(p => ({...p, upsModel: val}));
+                if(val.length > 1) {
+                    const s = val.toLowerCase();
+                    setUpsSuggestions(fullUpsLibrary.filter(u => (u.model||'').toLowerCase().includes(s) || (u.make||'').toLowerCase().includes(s) || (u.family||'').toLowerCase().includes(s)));
+                } else setUpsSuggestions([]);
+            }
 
             const selectBattery = (b) => {
                 setFormData(p => ({ ...p, batteryModel: b.model, manufacturer: b.manufacturer, type: b.type, unitWeight: String(b.weight), ampHours: String(b.ah||''), expectedLife: String(b.life||'') }));
                 setSuggestions([]);
+            };
+
+            const selectUps = (u) => {
+                setFormData(p => ({...p, upsMake: u.make, upsModel: `${u.family ? u.family + ' ' : ''}${u.model}`, upsKva: '' }));
+                setUpsSuggestions([]);
             };
 
             const aiScan = async (e) => {
@@ -513,17 +552,6 @@
                 return groups;
             };
 
-            const getGroupedReports = () => {
-                const groups = {};
-                serviceReports.filter(r => (r.customer||'').toLowerCase().includes(dbSearch.toLowerCase()) || (r.site||'').toLowerCase().includes(dbSearch.toLowerCase()))
-                    .forEach(r => {
-                        const k = r.customer || 'Unknown Customer';
-                        if(!groups[k]) groups[k] = [];
-                        groups[k].push(r);
-                    });
-                return groups;
-            };
-
             const getGroupedLibrary = (data) => {
                 const groups = {};
                 data.filter(l => (l.model||'').toLowerCase().includes(dbSearch.toLowerCase()) || (l.manufacturer||'').toLowerCase().includes(dbSearch.toLowerCase()))
@@ -534,43 +562,58 @@
                     });
                 return groups;
             };
+            
+            const getGroupedUpsLibrary = (data) => {
+                const groups = {};
+                data.filter(l => (l.model||'').toLowerCase().includes(dbSearch.toLowerCase()) || (l.make||'').toLowerCase().includes(dbSearch.toLowerCase()))
+                    .forEach(l => {
+                        const k = l.make || 'Generic';
+                        if(!groups[k]) groups[k] = [];
+                        groups[k].push(l);
+                    });
+                return groups;
+            }
 
             const groupedActive = useMemo(() => getGroupedLogs(activeLogs, 'location'), [activeLogs, dbSearch]);
             const groupedArchive = useMemo(() => getGroupedLogs(archivedLogs, archiveGroupBy), [archivedLogs, dbSearch, archiveGroupBy]);
-            const groupedReports = useMemo(() => getGroupedReports(), [serviceReports, dbSearch]);
             const groupedLib = useMemo(() => getGroupedLibrary(fullLibrary), [fullLibrary, dbSearch]);
+            const groupedUps = useMemo(() => getGroupedUpsLibrary(fullUpsLibrary), [fullUpsLibrary, dbSearch]);
+
+            const groupedReports = useMemo(() => {
+                 const groups = {};
+                serviceReports.filter(r => (r.customer||'').toLowerCase().includes(dbSearch.toLowerCase()) || (r.site||'').toLowerCase().includes(dbSearch.toLowerCase()))
+                    .forEach(r => {
+                        const k = r.customer || 'Unknown Customer';
+                        if(!groups[k]) groups[k] = [];
+                        groups[k].push(r);
+                    });
+                return groups;
+            }, [serviceReports, dbSearch]);
 
             const toggleArchive = async (id, status) => {
                 if (!user) return;
-                try {
-                    await updateDoc(doc(db, 'recycling_logs', id), { archived: !status });
-                } catch (e) { console.error(e); }
+                try { await updateDoc(doc(db, 'recycling_logs', id), { archived: !status }); } catch (e) { console.error(e); }
             };
             
             const groupArchivedItems = async () => {
                 if(selectedLogIds.size === 0) return;
-                const groupName = prompt("Enter Group/Job Name for selected items:", `Job - ${new Date().toLocaleDateString()}`);
+                const groupName = prompt("Enter Group/Job Name:", `Job - ${new Date().toLocaleDateString()}`);
                 if(!groupName) return;
                 const batch = writeBatch(db);
-                selectedLogIds.forEach(id => {
-                    batch.update(doc(db, 'recycling_logs', id), { archived: true, jobName: groupName });
-                });
-                await batch.commit();
-                setSelectedLogIds(new Set());
-                alert("Items Grouped & Archived.");
-                setArchiveGroupBy('jobName');
+                selectedLogIds.forEach(id => batch.update(doc(db, 'recycling_logs', id), { archived: true, jobName: groupName }));
+                await batch.commit(); setSelectedLogIds(new Set()); alert("Grouped & Archived."); setArchiveGroupBy('jobName');
             };
 
             const batchRestore = async () => {
                 const batch = writeBatch(db);
-                selectedLogIds.forEach(id => { batch.update(doc(db, 'recycling_logs', id), { archived: false }); });
+                selectedLogIds.forEach(id => batch.update(doc(db, 'recycling_logs', id), { archived: false }));
                 await batch.commit(); setSelectedLogIds(new Set()); alert("Restored Selected.");
             };
 
             const batchDelete = async () => {
-                if(!confirm("Permanently delete selected records?")) return;
+                if(!confirm("Permanently delete?")) return;
                 const batch = writeBatch(db);
-                selectedLogIds.forEach(id => { batch.delete(doc(db, 'recycling_logs', id)); });
+                selectedLogIds.forEach(id => batch.delete(doc(db, 'recycling_logs', id)));
                 await batch.commit(); setSelectedLogIds(new Set()); alert("Deleted Selected.");
             };
 
@@ -589,15 +632,12 @@
             if (printMode) {
                 let itemsToPrint = [];
                 let title = appSettings.companyName;
-                if(appSettings.reportUseCustomerName && currentPrintReport) title = currentPrintReport.customer;
-                
                 let subHeader = "Recycling Manifest";
                 let isServiceReport = false;
 
                 if (currentPrintReport) {
                     itemsToPrint = currentPrintReport.items;
-                    if(!appSettings.reportUseCustomerName) title = appSettings.companyName; // Default back if toggle off
-                    if(appSettings.reportUseCustomerName) title = currentPrintReport.customer; // Override if toggle on
+                    title = currentPrintReport.customer;
                     subHeader = `${currentPrintReport.site || ''} - ${currentPrintReport.dateStr}`;
                     isServiceReport = true;
                 } else {
@@ -809,7 +849,8 @@
                                                                 <label className="text-[10px] font-bold uppercase opacity-50 mb-1 block">Room / Area</label><input list="rooms" value={formData.room} onChange={e=>setFormData({...formData, room: e.target.value})} className="w-full p-2.5 rounded border dark:border-slate-700 dark:bg-slate-900 text-xs" /><datalist id="rooms">{savedData.rooms.map(r=><option key={r} value={r}/>)}</datalist>
                                                             </div>
                                                             <div className="grid grid-cols-2 gap-2">
-                                                                <input placeholder="UPS Make (e.g. APC)" value={formData.upsMake} onChange={e=>setFormData({...formData, upsMake: e.target.value})} className="p-2 text-xs border rounded dark:bg-slate-900 dark:border-slate-700" />
+                                                                <div className="relative"><input placeholder="UPS Make" value={formData.upsMake} onChange={(e) => {setFormData({...formData, upsMake: e.target.value}); if(e.target.value.length>1) setUpsSuggestions(fullUpsLibrary.filter(u=>u.make.toLowerCase().includes(e.target.value.toLowerCase()))); else setUpsSuggestions([]);}} className="p-2 w-full text-xs border rounded dark:bg-slate-900 dark:border-slate-700" />
+                                                                {upsSuggestions.length > 0 && <div className="absolute z-10 w-full bg-white dark:bg-slate-800 border dark:border-slate-700 max-h-32 overflow-y-auto">{upsSuggestions.map((u,i)=><div key={i} className="p-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer" onClick={()=>{selectUps(u)}}>{u.make} {u.model}</div>)}</div>}</div>
                                                                 <input placeholder="UPS Model" value={formData.upsModel} onChange={e=>setFormData({...formData, upsModel: e.target.value})} className="p-2 text-xs border rounded dark:bg-slate-900 dark:border-slate-700" />
                                                                 <input placeholder="Serial #" value={formData.upsSerial} onChange={e=>setFormData({...formData, upsSerial: e.target.value})} className="p-2 text-xs border rounded dark:bg-slate-900 dark:border-slate-700" />
                                                                 <input placeholder="kVa Rating" value={formData.upsKva} onChange={e=>setFormData({...formData, upsKva: e.target.value})} className="p-2 text-xs border rounded dark:bg-slate-900 dark:border-slate-700" />
@@ -867,14 +908,19 @@
                                     <div className="space-y-6">
                                         <div className="flex justify-between items-center">
                                             <div className="flex gap-2 p-1 bg-white dark:bg-slate-800 rounded-lg border dark:border-slate-700">
-                                                <button onClick={() => setDbSubTab('explorer')} className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${dbSubTab === 'explorer' ? `${theme.primary} text-white shadow-md` : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}>Explorer</button>
-                                                <button onClick={() => setDbSubTab('library')} className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${dbSubTab === 'library' ? `${theme.primary} text-white shadow-md` : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}>Library</button>
+                                                <button onClick={() => setDbSubTab('batteries')} className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${dbSubTab === 'batteries' ? `${theme.primary} text-white shadow-md` : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}>Batteries</button>
+                                                <button onClick={() => setDbSubTab('ups')} className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${dbSubTab === 'ups' ? `${theme.primary} text-white shadow-md` : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}>UPS Equipment</button>
                                             </div>
-                                            {dbSubTab === 'library' && <button onClick={() => setAddingLibItem(true)} className="flex items-center px-3 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold shadow hover:bg-emerald-600"><Plus size={14} className="mr-1"/> Add New</button>}
+                                            {dbSubTab === 'batteries' ? (
+                                                <button onClick={() => setAddingLibItem(true)} className="flex items-center px-3 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold shadow hover:bg-emerald-600"><Plus size={14} className="mr-1"/> Add Battery</button>
+                                            ) : (
+                                                <button onClick={() => setAddingUpsItem(true)} className="flex items-center px-3 py-2 bg-blue-500 text-white rounded-lg text-xs font-bold shadow hover:bg-blue-600"><Plus size={14} className="mr-1"/> Add UPS</button>
+                                            )}
                                         </div>
+
                                         {addingLibItem && (
                                             <Card className="p-4 border-emerald-500 border-2">
-                                                <h3 className="font-bold text-xs uppercase mb-3">New Library Spec</h3>
+                                                <h3 className="font-bold text-xs uppercase mb-3">New Battery Spec</h3>
                                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
                                                     <input placeholder="Manufacturer" value={newLibData.manufacturer} onChange={e=>setNewLibData({...newLibData, manufacturer: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
                                                     <input placeholder="Model" value={newLibData.model} onChange={e=>setNewLibData({...newLibData, model: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
@@ -888,20 +934,26 @@
                                                 <div className="flex justify-end gap-2"><button onClick={() => setAddingLibItem(false)} className="px-3 py-1 text-xs border rounded">Cancel</button><button onClick={handleNewLibSubmit} className="px-3 py-1 text-xs bg-emerald-500 text-white rounded font-bold">Save Spec</button></div>
                                             </Card>
                                         )}
+                                        
+                                        {addingUpsItem && (
+                                            <Card className="p-4 border-blue-500 border-2">
+                                                <h3 className="font-bold text-xs uppercase mb-3">New UPS Spec</h3>
+                                                <div className="grid grid-cols-3 gap-2 mb-3">
+                                                    <input placeholder="Make" value={newUpsData.make} onChange={e=>setNewUpsData({...newUpsData, make: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
+                                                    <input placeholder="Model" value={newUpsData.model} onChange={e=>setNewUpsData({...newUpsData, model: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
+                                                    <input placeholder="Type (3-Phase/Single)" value={newUpsData.type} onChange={e=>setNewUpsData({...newUpsData, type: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
+                                                </div>
+                                                <div className="flex justify-end gap-2"><button onClick={() => setAddingUpsItem(false)} className="px-3 py-1 text-xs border rounded">Cancel</button><button onClick={handleNewUpsSubmit} className="px-3 py-1 text-xs bg-blue-500 text-white rounded font-bold">Save UPS</button></div>
+                                            </Card>
+                                        )}
+
                                         <Card className="min-h-[400px]">
                                             <div className="p-4 border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center"><Search size={14} className="opacity-50 mr-2"/><input placeholder="Search database..." value={dbSearch} onChange={e=>setDbSearch(e.target.value)} className="bg-transparent outline-none text-sm w-full" /></div>
                                             <div className="p-4 space-y-2 max-h-[600px] overflow-y-auto">
-                                                {dbSubTab === 'explorer' ? Object.entries(groupedActive).map(([k,v]) => (
-                                                    <div key={k} className="border dark:border-slate-700 rounded-lg overflow-hidden">
-                                                        <button onClick={() => setExpandedFolders(p => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; })} className="w-full p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                                            <div className="flex items-center gap-3"><Folder size={18} className="text-amber-400"/><span className="font-bold text-sm">{k}</span></div><span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded opacity-70">{v.length}</span>
-                                                        </button>
-                                                        {expandedFolders.has(k) && <div className="bg-slate-50 dark:bg-slate-900/50 border-t dark:border-slate-700">{v.map((l,idx) => <div key={l.id} className={`p-2 pl-10 text-xs border-b dark:border-slate-800 last:border-0 flex justify-between ${idx % 2 === 0 ? 'bg-slate-50/50 dark:bg-slate-900/50' : 'bg-transparent'}`}><span><span className="font-bold">{l.manufacturer}</span> {l.batteryModel}</span><span className="opacity-50">{l.weight} lbs</span></div>)}</div>}
-                                                    </div>
-                                                )) : Object.entries(groupedLib).map(([manuf, items]) => (
+                                                {dbSubTab === 'batteries' ? Object.entries(groupedLib).map(([manuf, items]) => (
                                                     <div key={manuf} className="border dark:border-slate-700 rounded-lg overflow-hidden">
                                                         <button onClick={() => setExpandedLibFolders(p => { const n = new Set(p); n.has(manuf) ? n.delete(manuf) : n.add(manuf); return n; })} className="w-full p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                                            <div className="flex items-center gap-3"><Folder size={18} className="text-blue-400"/><span className="font-bold text-sm">{manuf}</span></div><span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded opacity-70">{items.length}</span>
+                                                            <div className="flex items-center gap-3"><Folder size={18} className="text-emerald-400"/><span className="font-bold text-sm">{manuf}</span></div><span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded opacity-70">{items.length}</span>
                                                         </button>
                                                         {expandedLibFolders.has(manuf) && (
                                                             <div className="bg-slate-50 dark:bg-slate-900/50 border-t dark:border-slate-700 p-2 grid grid-cols-1 gap-2">
@@ -912,14 +964,25 @@
                                                                         </div>
                                                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
                                                                             <button onClick={(e) => handleEditLibItem(e, b)} className="hover:bg-slate-100 dark:hover:bg-slate-700 p-1 rounded"><MoreHorizontal size={14}/></button>
-                                                                            {b.id && <button onClick={(e) => handleDeleteLibItem(e, b)} className="hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded text-red-500"><Trash2 size={14}/></button>}
+                                                                            {b.id && <button onClick={(e) => handleDeleteLibItem(e, b, 'custom_library')} className="hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded text-red-500"><Trash2 size={14}/></button>}
                                                                         </div>
                                                                     </div>
                                                                 ))}
                                                             </div>
                                                         )}
                                                     </div>
-                                                ))}
+                                                )) : (
+                                                    // UPS LIST
+                                                    fullUpsLibrary.filter(u => (u.make||'').toLowerCase().includes(dbSearch.toLowerCase()) || (u.model||'').toLowerCase().includes(dbSearch.toLowerCase())).map((u, i) => (
+                                                        <div key={i} className="p-3 border dark:border-slate-700 rounded-lg flex justify-between items-center group hover:border-blue-500">
+                                                            <div><span className="text-xs font-bold">{u.make}</span> <span className="text-sm">{u.model}</span> <span className="text-[10px] opacity-60 ml-2">{u.type}</span></div>
+                                                            <div className="flex gap-2 opacity-0 group-hover:opacity-100">
+                                                                <button onClick={(e) => handleEditUpsItem(e, u)} className="p-1 hover:bg-slate-100 rounded"><MoreHorizontal size={14}/></button>
+                                                                {u.id && <button onClick={(e) => handleDeleteLibItem(e, u, 'custom_ups_library')} className="p-1 text-red-500 hover:bg-red-50 rounded"><Trash2 size={14}/></button>}
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
                                             </div>
                                         </Card>
                                     </div>
@@ -1040,7 +1103,7 @@
                                         <div className="mt-12 pt-8 border-t dark:border-slate-700 text-center">
                                             <p className="font-bold text-slate-500 text-xs uppercase tracking-wider mb-2">About</p>
                                             <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">CTRL Inc.</h3>
-                                            <p className="text-xs text-slate-400">Battery Recycling Management System v1.05.0</p>
+                                            <p className="text-xs text-slate-400">Battery Recycling Management System v1.06.0</p>
                                             
                                             <div className="mt-6 flex justify-center gap-8">
                                                 <div className="text-center">
