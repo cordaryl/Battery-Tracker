@@ -1,1247 +1,666 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BatteryCycle Track</title>
-    
-    <!-- 1. Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        slate: { 850: '#151f32', 900: '#0f172a', 950: '#020617' }
-                    }
-                }
-            }
-        }
-    </script>
-    
-    <!-- 2. Babel -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { 
+  Battery, Recycle, Plus, Trash2, BarChart3, Leaf, History, AlertCircle, Save, Scale, 
+  Settings, Search, Building, Zap, Clock, Moon, Sun, Edit2, X, Printer, CheckSquare, 
+  Square, Palette, Type, Calendar, Archive, RefreshCcw, Layout, Box, Database, 
+  Download, Upload, Camera, Loader2, SearchCode, ChevronRight, ChevronDown, Folder, 
+  FileText, Library, AlertTriangle, ShieldCheck, FlipHorizontal, Image as ImageIcon,
+  PenTool, Sparkles
+} from 'lucide-react';
 
-    <!-- 3. Import Map -->
-    <script type="importmap">
-    {
-        "imports": {
-            "react": "https://esm.sh/react@18.2.0",
-            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-            "lucide-react": "https://esm.sh/lucide-react@0.263.1",
-            "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
-            "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
-            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
-        }
+// Firebase Imports
+import { initializeApp } from 'firebase/app';
+import { 
+  getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged 
+} from 'firebase/auth';
+import { 
+  getFirestore, collection, addDoc, deleteDoc, doc, setDoc, getDoc, updateDoc, 
+  onSnapshot, serverTimestamp 
+} from 'firebase/firestore';
+
+// --- Configuration ---
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const apiKey = ""; 
+
+// --- Exhaustive Specs Database (With Manufacturer) ---
+const INITIAL_BATTERY_DB = [
+  // --- CSB ---
+  { manufacturer: "CSB", model: "HRL 1234W", type: "Lead-Acid", weight: 5.7, ah: 9, life: "5-8 Years" },
+  { manufacturer: "CSB", model: "GP 1272", type: "Lead-Acid", weight: 5.3, ah: 7.2, life: "3-5 Years" },
+  { manufacturer: "CSB", model: "GP 12120", type: "Lead-Acid", weight: 8.1, ah: 12, life: "3-5 Years" },
+  { manufacturer: "CSB", model: "GP 12170", type: "Lead-Acid", weight: 12.1, ah: 17, life: "3-5 Years" },
+  { manufacturer: "CSB", model: "HRL 12500W", type: "Lead-Acid", weight: 97, ah: 125, life: "8-10 Years" },
+  
+  // --- Universal ---
+  { manufacturer: "Universal", model: "UB1223 (2.3Ah)", type: "Lead-Acid", weight: 1.6, ah: 2.3, life: "3-5 Years" },
+  { manufacturer: "Universal", model: "UB1250 (5Ah)", type: "Lead-Acid", weight: 3.5, ah: 5, life: "3-5 Years" },
+  { manufacturer: "Universal", model: "UB1270 (7Ah)", type: "Lead-Acid", weight: 4.8, ah: 7, life: "3-5 Years" },
+  { manufacturer: "Universal", model: "UB1280 (8Ah)", type: "Lead-Acid", weight: 4.9, ah: 8, life: "3-5 Years" },
+  { manufacturer: "Universal", model: "UB1290 (9Ah)", type: "Lead-Acid", weight: 5.1, ah: 9, life: "3-5 Years" },
+  { manufacturer: "Universal", model: "UB12100 (10Ah)", type: "Lead-Acid", weight: 7.1, ah: 10, life: "3-5 Years" },
+  { manufacturer: "Universal", model: "UB12120 (12Ah)", type: "Lead-Acid", weight: 8.2, ah: 12, life: "3-5 Years" },
+  { manufacturer: "Universal", model: "UB12180 (18Ah)", type: "Lead-Acid", weight: 11.6, ah: 18, life: "3-5 Years" },
+  
+  // --- Power-Sonic ---
+  { manufacturer: "Power-Sonic", model: "PS-1270", type: "Lead-Acid", weight: 4.8, ah: 7, life: "3-5 Years" },
+  { manufacturer: "Power-Sonic", model: "PS-1290", type: "Lead-Acid", weight: 5.1, ah: 9, life: "3-5 Years" },
+  
+  // --- APC / Schneider ---
+  { manufacturer: "APC", model: "RBC2", type: "Lead-Acid", weight: 5.5, ah: 7, life: "3-5 Years" },
+  { manufacturer: "APC", model: "RBC7", type: "Lead-Acid", weight: 24.5, ah: 18, life: "3-5 Years" },
+  { manufacturer: "APC", model: "RBC12", type: "Lead-Acid", weight: 42.1, ah: 7, life: "3-5 Years" },
+  { manufacturer: "APC", model: "RBC44", type: "Lead-Acid", weight: 76.2, ah: 5, life: "3-5 Years" },
+  
+  // --- Enersys ---
+  { manufacturer: "Enersys", model: "DataSafe 12HX205", type: "Lead-Acid", weight: 42, ah: 44, life: "10 Years" },
+  { manufacturer: "Enersys", model: "DataSafe 12HX300", type: "Lead-Acid", weight: 60, ah: 71, life: "10 Years" },
+  { manufacturer: "Enersys", model: "DataSafe 12HX330", type: "Lead-Acid", weight: 65, ah: 78, life: "10 Years" },
+  { manufacturer: "Enersys", model: "DataSafe 12HX400", type: "Lead-Acid", weight: 80, ah: 92, life: "10 Years" },
+  { manufacturer: "Enersys", model: "DataSafe 12HX505", type: "Lead-Acid", weight: 104, ah: 115, life: "10 Years" },
+  { manufacturer: "Enersys", model: "DataSafe 12HX540", type: "Lead-Acid", weight: 106, ah: 123, life: "10 Years" },
+  
+  // --- C&D Technologies ---
+  { manufacturer: "C&D", model: "UPS12-300MR", type: "Lead-Acid", weight: 58, ah: 78, life: "10 Years" },
+  { manufacturer: "C&D", model: "UPS12-350MR", type: "Lead-Acid", weight: 68, ah: 90, life: "10 Years" },
+  { manufacturer: "C&D", model: "UPS12-400MR", type: "Lead-Acid", weight: 76, ah: 102, life: "10 Years" },
+  { manufacturer: "C&D", model: "UPS12-490MR", type: "Lead-Acid", weight: 98, ah: 138, life: "10 Years" },
+  { manufacturer: "C&D", model: "UPS12-540MR", type: "Lead-Acid", weight: 105, ah: 148, life: "10 Years" },
+  { manufacturer: "C&D", model: "JC 400 (Wet)", type: "Wet Cell", weight: 65, ah: 400, life: "20 Years" },
+  
+  // --- East Penn / Deka ---
+  { manufacturer: "Deka", model: "12AVR100ET", type: "Lead-Acid", weight: 69, ah: 100, life: "10 Years" },
+  { manufacturer: "Deka", model: "12AVR145ET", type: "Lead-Acid", weight: 101, ah: 145, life: "10 Years" },
+  { manufacturer: "Deka", model: "12AVR170ET", type: "Lead-Acid", weight: 118, ah: 170, life: "10 Years" },
+  
+  // --- Trojan ---
+  { manufacturer: "Trojan", model: "T-105 (6V)", type: "Wet Cell", weight: 62, ah: 225, life: "5-7 Years" },
+  { manufacturer: "Trojan", model: "L16P (6V)", type: "Wet Cell", weight: 115, ah: 360, life: "5-8 Years" },
+  
+  // --- Tesla ---
+  { manufacturer: "Tesla", model: "Powerwall 2", type: "Li-ion", weight: 251, ah: 0, life: "10-15 Years" },
+  { manufacturer: "Tesla", model: "Powerwall 3", type: "Li-ion", weight: 287, ah: 0, life: "10-15 Years" },
+  
+  // --- LG ---
+  { manufacturer: "LG Chem", model: "RESU 10H", type: "Li-ion", weight: 214, ah: 63, life: "10 Years" },
+  
+  // --- Enphase ---
+  { manufacturer: "Enphase", model: "IQ Battery 10", type: "Li-ion", weight: 346, ah: 0, life: "10-15 Years" },
+];
+
+const THEMES = {
+  emerald: { primary: 'bg-emerald-600', secondary: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-l-emerald-500', ring: 'focus:ring-emerald-500' },
+  blue: { primary: 'bg-blue-600', secondary: 'bg-blue-100', text: 'text-blue-700', border: 'border-l-blue-500', ring: 'focus:ring-blue-500' },
+  slate: { primary: 'bg-slate-700', secondary: 'bg-slate-200', text: 'text-slate-800', border: 'border-l-slate-600', ring: 'focus:ring-slate-600' }
+};
+
+// --- Helper Components ---
+const Card = ({ children, className = "" }) => (
+  <div className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden ${className}`}>
+    {children}
+  </div>
+);
+
+const TypeBadge = ({ type, subType, themeClasses }) => {
+  const colors = {
+    'Lead-Acid': 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
+    'Wet Cell': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300',
+    'Li-ion': `${themeClasses.secondary || 'bg-emerald-100'} ${themeClasses.text || 'text-emerald-700'} dark:bg-emerald-900/40 dark:text-emerald-300`,
+    'Other': 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+  };
+  const typeStr = String(type || 'Other');
+  const subTypeStr = subType ? String(subType) : null;
+
+  return (
+    <div className="flex gap-1 items-center">
+      <span className={`px-2 py-1 rounded-md text-xs font-medium ${colors[typeStr] || colors['Other']}`}>
+        {typeStr}
+      </span>
+      {typeStr === 'Li-ion' && subTypeStr && (
+         <span className="px-2 py-1 rounded-md text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+           {subTypeStr}
+         </span>
+      )}
+    </div>
+  );
+};
+
+const StatusIcon = ({ status }) => {
+  if (status === 'expired') return <AlertTriangle className="text-red-500" size={14} title="Expired" />;
+  if (status === 'warning') return <AlertCircle className="text-amber-500" size={14} title="Expiring Soon" />;
+  if (status === 'safe') return <ShieldCheck className="text-emerald-500" size={14} title="Current" />;
+  return null;
+};
+
+export default function BatteryTracker() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [dbSubTab, setDbSubTab] = useState('explorer');
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [printMode, setPrintMode] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [searchingModel, setSearchingModel] = useState(false);
+  
+  // Data States
+  const [logs, setLogs] = useState([]);
+  const [customLibrary, setCustomLibrary] = useState([]);
+  const [savedSources, setSavedSources] = useState([]);
+  const [dbSearch, setDbSearch] = useState('');
+  
+  // Folder States
+  const [expandedFolders, setExpandedFolders] = useState(new Set());
+  const [expandedLibFolders, setExpandedLibFolders] = useState(new Set());
+  
+  const [selectedLogIds, setSelectedLogIds] = useState(new Set());
+
+  const [appSettings, setAppSettings] = useState({
+    companyName: 'BatteryCycle Track', logoUrl: '', themeColor: 'emerald', fontStyle: 'font-sans', headerVariant: 'solid'
+  });
+
+  const [editingId, setEditingId] = useState(null);
+  const [editingLibId, setEditingLibId] = useState(null);
+
+  const [formData, setFormData] = useState({
+    batteryModel: '', manufacturer: '', type: 'Lead-Acid', lithiumType: '', unitWeight: '', totalWeight: '', count: '', 
+    ampHours: '', expectedLife: '', dateCode: '', notes: '', location: '', installDate: '', expiryDate: ''
+  });
+  
+  const [suggestions, setSuggestions] = useState([]);
+  const theme = THEMES[appSettings.themeColor] || THEMES.emerald;
+
+  // --- Derived Data ---
+  const activeLogs = useMemo(() => logs.filter(l => !l.archived), [logs]);
+  const archivedLogs = useMemo(() => logs.filter(l => l.archived), [logs]);
+  
+  const fullLibrary = useMemo(() => {
+    return [...INITIAL_BATTERY_DB, ...customLibrary].map(item => ({
+      ...item,
+      manufacturer: item.manufacturer || item.model.split(' ')[0] || "Generic"
+    })).sort((a,b) => a.manufacturer.localeCompare(b.manufacturer));
+  }, [customLibrary]);
+
+  const groupedLogs = useMemo(() => {
+    const s = dbSearch.toLowerCase();
+    const filtered = logs.filter(l => 
+      String(l.location || '').toLowerCase().includes(s) || 
+      String(l.batteryModel || '').toLowerCase().includes(s)
+    );
+    const groups = {};
+    filtered.forEach(l => {
+      const key = String(l.location || 'Unassigned Source');
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(l);
+    });
+    return groups;
+  }, [logs, dbSearch]);
+
+  const groupedLibrary = useMemo(() => {
+    const s = dbSearch.toLowerCase();
+    const filtered = fullLibrary.filter(l => 
+      String(l.model || '').toLowerCase().includes(s) || 
+      String(l.manufacturer || '').toLowerCase().includes(s)
+    );
+    const groups = {};
+    filtered.forEach(l => {
+      const key = l.manufacturer;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(l);
+    });
+    return groups;
+  }, [fullLibrary, dbSearch]);
+
+  const manifestAnalysis = useMemo(() => {
+    const now = new Date();
+    const metrics = { weight: 0, count: 0, expired: 0, expiringSoon: 0 };
+    activeLogs.forEach(l => {
+      metrics.weight += Number(l.weight || 0);
+      metrics.count += Number(l.count || 0);
+      if (l.expiryDate) {
+        const expiry = new Date(l.expiryDate);
+        const diffDays = (expiry - now) / (1000 * 60 * 60 * 24);
+        if (diffDays < 0) metrics.expired++;
+        else if (diffDays < 60) metrics.expiringSoon++;
+      }
+    });
+    return metrics;
+  }, [activeLogs]);
+
+  // --- Auth & Data Lifecycle ---
+  useEffect(() => {
+    const initAuth = async () => {
+      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+        await signInWithCustomToken(auth, __initial_auth_token);
+      } else { await signInAnonymously(auth); }
+    };
+    initAuth();
+    return onAuthStateChanged(auth, setUser);
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsubLogs = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'recycling_logs'), (snap) => {
+      setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+      setLoading(false);
+    });
+    const unsubLib = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'custom_library'), (snap) => {
+      setCustomLibrary(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    const unsubSources = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'saved_sources'), (snap) => {
+      setSavedSources(snap.docs.map(d => String(d.data().name)));
+    });
+    getDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'config'))
+      .then(s => s.exists() && setAppSettings(prev => ({...prev, ...s.data()})));
+
+    return () => { unsubLogs(); unsubLib(); unsubSources(); };
+  }, [user]);
+
+  useEffect(() => {
+    const unit = parseFloat(formData.unitWeight) || 0;
+    const cnt = parseInt(formData.count) || 0;
+    if (unit > 0 && cnt > 0) {
+      setFormData(p => ({ ...p, totalWeight: (unit * cnt).toFixed(1) }));
     }
-    </script>
+  }, [formData.unitWeight, formData.count]);
 
-    <style>
-        html { -webkit-tap-highlight-color: transparent; }
-        body { padding-bottom: env(safe-area-inset-bottom); }
-        
-        @media print {
-            @page { margin: 0.5cm; }
-            body { background: white !important; color: black !important; }
-            .no-print { display: none !important; }
-            .print-view { display: block !important; }
-            /* Boxed table for print */
-            table.print-bordered { border-collapse: collapse; width: 100%; border: 1px solid #000; }
-            table.print-bordered th, table.print-bordered td { border: 1px solid #000; padding: 6px; }
-            table.print-bordered th { background-color: #f3f4f6 !important; font-weight: bold; }
-            tr.zebra-row-odd { background-color: #f9fafb !important; -webkit-print-color-adjust: exact; }
-            tr.zebra-row-even { background-color: #ffffff !important; -webkit-print-color-adjust: exact; }
-            .group-header { background-color: #e5e7eb !important; font-weight: bold; -webkit-print-color-adjust: exact; border: 1px solid #000; }
-            .ups-header { font-weight: bold; margin-top: 10px; margin-bottom: 5px; }
-            .print-color-exact { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  // --- Utilities ---
+  const getExpiryStatus = (expiryStr) => {
+    if (!expiryStr) return 'none';
+    const expiry = new Date(expiryStr);
+    const now = new Date();
+    const diffDays = (expiry - now) / (1000 * 60 * 60 * 24);
+    if (diffDays < 0) return 'expired';
+    if (diffDays < 60) return 'warning';
+    return 'safe';
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(p => ({ ...p, [name]: value }));
+    if (name === 'batteryModel') {
+      const sLower = String(value).toLowerCase();
+      // UPDATE: Filter by both Model AND Manufacturer
+      if (value.length > 1) {
+        setSuggestions(fullLibrary.filter(b => 
+          String(b.model).toLowerCase().includes(sLower) || 
+          String(b.manufacturer).toLowerCase().includes(sLower)
+        ));
+      } else {
+        setSuggestions([]);
+      }
+    }
+  };
+
+  const selectBattery = (b) => {
+    setFormData(p => ({ 
+      ...p, 
+      batteryModel: String(b.model), 
+      manufacturer: String(b.manufacturer || ''),
+      type: String(b.type), 
+      unitWeight: String(b.weight), 
+      ampHours: String(b.ah || ''), 
+      expectedLife: String(b.life || '') 
+    }));
+    setSuggestions([]);
+  };
+
+  const saveRecord = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    try {
+      const payload = { 
+        ...formData, 
+        weight: parseFloat(formData.totalWeight) || 0, 
+        unitWeight: parseFloat(formData.unitWeight) || 0, 
+        count: parseInt(formData.count) || 0, 
+        dateStr: new Date().toLocaleDateString(), 
+        archived: false 
+      };
+      
+      if (formData.location && !savedSources.includes(formData.location)) {
+         await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'saved_sources'), { name: formData.location });
+      }
+
+      if (editingId) { await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'recycling_logs', editingId), payload); }
+      else if (editingLibId) {
+        if (editingLibId.startsWith('custom_')) {
+           const realId = editingLibId.replace('custom_', '');
+           await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'custom_library', realId), {
+             model: formData.batteryModel, manufacturer: formData.manufacturer, type: formData.type, weight: parseFloat(formData.unitWeight), ah: formData.ampHours, life: formData.expectedLife
+           });
+        } else {
+           await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'custom_library'), {
+             model: formData.batteryModel, manufacturer: formData.manufacturer, type: formData.type, weight: parseFloat(formData.unitWeight), ah: formData.ampHours, life: formData.expectedLife
+           });
         }
-    </style>
-</head>
-<body class="bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-800 dark:text-slate-100 transition-colors duration-300 flex flex-col">
-    <div id="root" class="flex-1 flex flex-col"></div>
+        setEditingLibId(null);
+        setActiveTab('database');
+        return; 
+      }
+      else { await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'recycling_logs'), { ...payload, createdAt: serverTimestamp() }); }
+      
+      setEditingId(null); 
+      resetForm();
+      setActiveTab('dashboard');
+    } catch (err) { console.error(err); }
+  };
 
-    <script type="text/babel" data-type="module">
-        import React, { useState, useEffect, useMemo, useRef } from 'react';
-        import { createRoot } from 'react-dom/client';
-        import { 
-            Battery, Recycle, Plus, Trash2, BarChart3, Leaf, History, AlertCircle, Save, Scale, 
-            Settings, Search, Building, Zap, Clock, Moon, Sun, Edit2, X, Printer, CheckSquare, 
-            Square, Palette, Type, Calendar, Archive, RefreshCcw, Layout, Box, Database, 
-            Download, Upload, Camera, Loader2, SearchCode, ChevronRight, ChevronDown, Folder, 
-            FileText, Library, AlertTriangle, ShieldCheck, FlipHorizontal, Image as ImageIcon,
-            PenTool, Sparkles, Filter, ToggleLeft, ToggleRight, Layers, MoreHorizontal, Info, Briefcase,
-            ArrowUpDown, ClipboardList, MapPin, Server, Copy, CalendarDays, AlertOctagon
-        } from 'lucide-react';
+  const resetForm = () => {
+    setFormData({ batteryModel: '', manufacturer: '', type: 'Lead-Acid', lithiumType: '', unitWeight: '', totalWeight: '', count: '', ampHours: '', expectedLife: '', dateCode: '', notes: '', location: '', installDate: '', expiryDate: '' });
+  };
+
+  const toggleArchive = async (id, status) => {
+    if (!user) return;
+    await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'recycling_logs', id), { archived: !status });
+  };
+
+  const startEdit = (l) => {
+    setEditingId(l.id); 
+    setFormData({ ...l, totalWeight: String(l.weight) }); 
+    setActiveTab('log');
+  };
+
+  const startEditLibrary = (item) => {
+    const id = item.id ? `custom_${item.id}` : 'builtin_new';
+    setEditingLibId(id);
+    setFormData({
+      batteryModel: item.model,
+      manufacturer: item.manufacturer || item.model.split(' ')[0],
+      type: item.type,
+      unitWeight: String(item.weight),
+      ampHours: String(item.ah || ''),
+      expectedLife: String(item.life || ''),
+      count: '1', totalWeight: String(item.weight),
+      location: '', notes: '', dateCode: '', installDate: '', expiryDate: ''
+    });
+    setActiveTab('log');
+  };
+
+  const saveSettings = async () => {
+    if (!user) return;
+    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'config'), appSettings);
+    alert('Settings applied!');
+  };
+
+  // --- AI Spec Search (Text) ---
+  const handleModelSearch = async () => {
+    if (!formData.batteryModel) return;
+    setSearchingModel(true);
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          contents: [{ parts: [{ text: `Search for specifications for the battery model "${formData.batteryModel}". Return a JSON object with keys: manufacturer, type (Lead-Acid, Wet Cell, or Li-ion), weight (in lbs, as a number), ah (Amp Hours), life (expected life in years).` }] }], 
+          tools: [{ google_search: {} }] 
+        })
+      });
+      const data = await res.json();
+      const match = data.candidates?.[0]?.content?.parts?.[0]?.text.match(/\{[\s\S]*\}/);
+      if (match) {
+        const p = JSON.parse(match[0]);
+        setFormData(prev => ({ 
+          ...prev, 
+          manufacturer: String(p.manufacturer || prev.manufacturer), 
+          type: String(p.type || prev.type), 
+          unitWeight: String(p.weight || prev.unitWeight), 
+          ampHours: String(p.ah || prev.ampHours), 
+          expectedLife: String(p.life || prev.expectedLife) 
+        }));
+        alert("Specs found and applied!");
+      } else {
+        alert("Could not find specific specs. Please check the model name.");
+      }
+    } catch (e) { 
+      console.error("Spec search failed", e); 
+      alert("Search failed. Please try again.");
+    } finally { 
+      setSearchingModel(false); 
+    }
+  };
+
+  // --- AI Scan Label (Image) ---
+  const handleScanLabel = async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    setScanning(true);
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
+        const base64 = reader.result.split(',')[1];
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: "Identify this battery label. Return JSON with keys: manufacturer, model, type, weight (lbs), ah, life." }, { inlineData: { mimeType: file.type, data: base64 } }] }], tools: [{ google_search: {} }] })
+        });
+        const data = await res.json();
+        const match = data.candidates?.[0]?.content?.parts?.[0]?.text.match(/\{[\s\S]*\}/);
+        if (match) {
+          const p = JSON.parse(match[0]);
+          setFormData(prev => ({ ...prev, batteryModel: String(p.model || ''), manufacturer: String(p.manufacturer || ''), type: String(p.type || 'Lead-Acid'), unitWeight: String(p.weight || ''), ampHours: String(p.ah || ''), expectedLife: String(p.life || '') }));
+        }
+      } catch (e) { console.error("AI Scan failed", e); }
+      finally { setScanning(false); }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  if (loading) return <div className="flex h-screen items-center justify-center dark:bg-slate-900"><Loader2 className="animate-spin text-emerald-600" /></div>;
+
+  // --- Print View ---
+  if (printMode) {
+    const pLogs = selectedLogIds.size > 0 ? logs.filter(l => selectedLogIds.has(l.id)) : activeLogs;
+    return (
+      <div className="min-h-screen bg-white text-black p-8">
+        <div className="print:hidden flex justify-between items-center mb-8 bg-slate-100 p-4 rounded border">
+          <h2 className="font-bold">Report Preview ({pLogs.length} items)</h2>
+          <div className="flex gap-2"><button onClick={() => window.print()} className={`${theme.primary} text-white px-4 py-2 rounded`}>Print PDF</button><button onClick={() => setPrintMode(false)} className="bg-white border px-4 py-2 rounded">Exit</button></div>
+        </div>
+        <div className="max-w-4xl mx-auto border-b-2 border-black pb-4 mb-8 flex justify-between items-center">
+          <h1 className="text-2xl font-bold uppercase">{String(appSettings.companyName)}</h1>
+          <p>{new Date().toLocaleDateString()}</p>
+        </div>
+        <table className="w-full text-left text-sm">
+          <thead className="border-b"><tr><th>Date</th><th>Source</th><th>Model</th><th>Qty</th><th>Lbs</th></tr></thead>
+          <tbody>{pLogs.map(l => <tr key={l.id} className="border-b"><td>{String(l.dateStr)}</td><td>{String(l.location)}</td><td>{String(l.batteryModel)}</td><td>{Number(l.count)}</td><td>{Number(l.weight)}</td></tr>)}</tbody>
+        </table>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`${isDarkMode ? 'dark' : ''} ${appSettings.fontStyle}`}>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors">
         
-        import { initializeApp } from 'firebase/app';
-        import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-        import { getFirestore, collection, addDoc, deleteDoc, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp, enableIndexedDbPersistence, writeBatch, getDocs } from 'firebase/firestore';
-
-        // --- CONFIGURATION ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyC3SysfdCs1uBypC_JjHuWvpvI2mhS9LZ4",
-            authDomain: "battery-recyle-tracker.firebaseapp.com",
-            projectId: "battery-recyle-tracker",
-            storageBucket: "battery-recyle-tracker.firebasestorage.app",
-            messagingSenderId: "622740135754",
-            appId: "1:622740135754:web:05b76f79e7d1c2adeaabb3",
-            measurementId: "G-7DGFYQ72S1"
-        };
-        const GEMINI_API_KEY = ""; 
-
-        // --- INITIALIZE FIREBASE ---
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        
-        try { enableIndexedDbPersistence(db).catch(() => {}); } catch (e) {}
-
-        // --- DATA ---
-        const INITIAL_BATTERY_DB = [
-            { manufacturer: "CSB", model: "HRL 1234W", type: "Lead-Acid", weight: 5.7, ah: 9, life: "5-8 Years" },
-            { manufacturer: "CSB", model: "GP 1272", type: "Lead-Acid", weight: 5.3, ah: 7.2, life: "3-5 Years" },
-            { manufacturer: "CSB", model: "GP 12120", type: "Lead-Acid", weight: 8.1, ah: 12, life: "3-5 Years" },
-            { manufacturer: "CSB", model: "GP 12170", type: "Lead-Acid", weight: 12.1, ah: 17, life: "3-5 Years" },
-            { manufacturer: "CSB", model: "HRL 12500W", type: "Lead-Acid", weight: 97, ah: 125, life: "8-10 Years" },
-            { manufacturer: "Universal", model: "UB1223", type: "Lead-Acid", weight: 1.6, ah: 2.3, life: "3-5 Years" },
-            { manufacturer: "Universal", model: "UB1250", type: "Lead-Acid", weight: 3.5, ah: 5, life: "3-5 Years" },
-            { manufacturer: "Universal", model: "UB1270", type: "Lead-Acid", weight: 4.8, ah: 7, life: "3-5 Years" },
-            { manufacturer: "Universal", model: "UB1280", type: "Lead-Acid", weight: 4.9, ah: 8, life: "3-5 Years" },
-            { manufacturer: "Universal", model: "UB1290", type: "Lead-Acid", weight: 5.1, ah: 9, life: "3-5 Years" },
-            { manufacturer: "Universal", model: "UB12100", type: "Lead-Acid", weight: 7.1, ah: 10, life: "3-5 Years" },
-            { manufacturer: "Universal", model: "UB12120", type: "Lead-Acid", weight: 8.2, ah: 12, life: "3-5 Years" },
-            { manufacturer: "Universal", model: "UB12180", type: "Lead-Acid", weight: 11.6, ah: 18, life: "3-5 Years" },
-            { manufacturer: "Power-Sonic", model: "PS-1270", type: "Lead-Acid", weight: 4.8, ah: 7, life: "3-5 Years" },
-            { manufacturer: "Power-Sonic", model: "PS-1290", type: "Lead-Acid", weight: 5.1, ah: 9, life: "3-5 Years" },
-            { manufacturer: "APC", model: "RBC2", type: "Lead-Acid", weight: 5.5, ah: 7, life: "3-5 Years" },
-            { manufacturer: "APC", model: "RBC7", type: "Lead-Acid", weight: 24.5, ah: 18, life: "3-5 Years" },
-            { manufacturer: "APC", model: "RBC12", type: "Lead-Acid", weight: 42.1, ah: 7, life: "3-5 Years" },
-            { manufacturer: "APC", model: "RBC44", type: "Lead-Acid", weight: 76.2, ah: 5, life: "3-5 Years" },
-            { manufacturer: "Enersys", model: "DataSafe 12HX205", type: "Lead-Acid", weight: 42, ah: 44, life: "10 Years" },
-            { manufacturer: "Enersys", model: "DataSafe 12HX300", type: "Lead-Acid", weight: 60, ah: 71, life: "10 Years" },
-            { manufacturer: "Enersys", model: "DataSafe 12HX330", type: "Lead-Acid", weight: 65, ah: 78, life: "10 Years" },
-            { manufacturer: "Enersys", model: "DataSafe 12HX400", type: "Lead-Acid", weight: 80, ah: 92, life: "10 Years" },
-            { manufacturer: "Enersys", model: "DataSafe 12HX505", type: "Lead-Acid", weight: 104, ah: 115, life: "10 Years" },
-            { manufacturer: "Enersys", model: "DataSafe 12HX540", type: "Lead-Acid", weight: 106, ah: 123, life: "10 Years" },
-            { manufacturer: "C&D", model: "UPS12-300MR", type: "Lead-Acid", weight: 58, ah: 78, life: "10 Years" },
-            { manufacturer: "C&D", model: "UPS12-350MR", type: "Lead-Acid", weight: 68, ah: 90, life: "10 Years" },
-            { manufacturer: "C&D", model: "UPS12-400MR", type: "Lead-Acid", weight: 76, ah: 102, life: "10 Years" },
-            { manufacturer: "C&D", model: "UPS12-490MR", type: "Lead-Acid", weight: 98, ah: 138, life: "10 Years" },
-            { manufacturer: "C&D", model: "UPS12-540MR", type: "Lead-Acid", weight: 105, ah: 148, life: "10 Years" },
-            { manufacturer: "C&D", model: "JC 400 (Wet)", type: "Wet Cell", weight: 65, ah: 400, life: "20 Years" },
-            { manufacturer: "Leoch", model: "LP12-7.0", type: "Lead-Acid", weight: 4.7, ah: 7, life: "3-5 Years" },
-            { manufacturer: "Leoch", model: "LP12-9.0", type: "Lead-Acid", weight: 5.5, ah: 9, life: "3-5 Years" },
-            { manufacturer: "Leoch", model: "XP12-300", type: "Lead-Acid", weight: 57, ah: 75, life: "10 Years" },
-            { manufacturer: "Leoch", model: "XP12-400", type: "Lead-Acid", weight: 75, ah: 100, life: "10 Years" },
-            { manufacturer: "Deka", model: "12AVR100ET", type: "Lead-Acid", weight: 69, ah: 100, life: "10 Years" },
-            { manufacturer: "Deka", model: "12AVR145ET", type: "Lead-Acid", weight: 104, ah: 145, life: "10 Years" },
-            { manufacturer: "Deka", model: "12AVR170ET", type: "Lead-Acid", weight: 118, ah: 170, life: "10 Years" },
-            { manufacturer: "Amstron", model: "AP-1270", type: "Lead-Acid", weight: 4.8, ah: 7, life: "3-5 Years" },
-            { manufacturer: "Amstron", model: "AP-1290", type: "Lead-Acid", weight: 5.4, ah: 9, life: "3-5 Years" },
-            { manufacturer: "Trojan", model: "T-105 (6V)", type: "Wet Cell", weight: 62, ah: 225, life: "5-7 Years" },
-            { manufacturer: "Trojan", model: "L16P", type: "Wet Cell", weight: 115, ah: 360, life: "5-8 Years" },
-            { manufacturer: "Tesla", model: "Powerwall 2", type: "Li-ion", weight: 251, ah: 0, life: "10-15 Years" },
-            { manufacturer: "Tesla", model: "Powerwall 3", type: "Li-ion", weight: 287, ah: 0, life: "10-15 Years" },
-            { manufacturer: "LG Chem", model: "RESU 10H", type: "Li-ion", weight: 214, ah: 63, life: "10 Years" },
-            { manufacturer: "Enphase", model: "IQ Battery 10", type: "Li-ion", weight: 346, ah: 0, life: "10-15 Years" },
-        ];
-
-        const INITIAL_UPS_DB = [
-            { make: "Schneider", family: "Galaxy VS", model: "GVS 20kW", type: "3-Phase", acV: "480V", dcV: "480V" },
-            { make: "Schneider", family: "Galaxy VS", model: "GVS 50kW", type: "3-Phase", acV: "480V", dcV: "480V" },
-            { make: "Schneider", family: "Symmetra PX", model: "PX 48kW", type: "3-Phase", acV: "480V", dcV: "384V" },
-            { make: "Schneider", family: "Symmetra PX", model: "PX 100kW", type: "3-Phase", acV: "480V", dcV: "384V" },
-            { make: "APC", family: "Smart-UPS", model: "SRT3000", type: "Single Phase", acV: "120V", dcV: "96V" },
-            { make: "APC", family: "Smart-UPS", model: "SRT5000", type: "Single Phase", acV: "208V", dcV: "192V" },
-            { make: "Eaton", family: "9395", model: "9395-275", type: "3-Phase", acV: "480V", dcV: "480V" },
-            { make: "Eaton", family: "93PM", model: "93PM-50", type: "3-Phase", acV: "480V", dcV: "432V" },
-            { make: "Eaton", family: "9PX", model: "9PX6K", type: "Single Phase", acV: "208V", dcV: "180V" },
-            { make: "Vertiv", family: "Liebert EXL", model: "S1 600kVA", type: "3-Phase", acV: "480V", dcV: "540V" },
-            { make: "Vertiv", family: "Liebert GXT5", model: "GXT5-3000", type: "Single Phase", acV: "120V", dcV: "72V" },
-            { make: "Toshiba", family: "G9000", model: "100kVA", type: "3-Phase", acV: "480V", dcV: "288V" },
-            { make: "Mitsubishi", family: "9900B", model: "9900B", type: "3-Phase", acV: "480V", dcV: "480V" }
-        ];
-
-        const THEMES = {
-            emerald: { primary: 'bg-emerald-600', text: 'text-emerald-700', border: 'border-l-emerald-500' },
-            blue: { primary: 'bg-blue-600', text: 'text-blue-700', border: 'border-l-blue-500' },
-            violet: { primary: 'bg-violet-600', text: 'text-violet-700', border: 'border-l-violet-500' },
-            slate: { primary: 'bg-slate-700', text: 'text-slate-700', border: 'border-l-slate-600' }
-        };
-
-        const Card = ({ children, className = "" }) => (
-            <div className={`bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden ${className}`}>
-                {children}
+        {/* Header */}
+        <header className={`${appSettings.headerVariant === 'solid' ? 'bg-slate-900 text-white' : 'bg-white dark:bg-slate-800 border-b dark:border-slate-700'} shadow p-4`}>
+          <div className="max-w-6xl mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              {appSettings.logoUrl ? <img src={appSettings.logoUrl} className="w-10 h-10 object-contain" /> : <div className={`${theme.primary} p-2 rounded`}><Battery className="text-white" /></div>}
+              <h1 className="text-xl font-bold">{String(appSettings.companyName)}</h1>
             </div>
-        );
-
-        const TypeBadge = ({ type }) => {
-            const t = String(type || 'Other');
-            let colorClass = 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
-            if(t.includes('Li-ion')) colorClass = 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300';
-            if(t.includes('Wet')) colorClass = 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300';
-            return <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${colorClass}`}>{t}</span>;
-        };
-
-        const StatusIcon = ({ date }) => {
-            if (!date) return <div className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-600 print-color-exact"></div>;
-            const days = (new Date(date) - new Date()) / (1000 * 60 * 60 * 24);
-            if (days < 0) return <div className="w-3 h-3 rounded-full bg-red-500 border border-red-600 print-color-exact" title="Expired"></div>;
-            if (days < 365) return <div className="w-3 h-3 rounded-full bg-amber-500 border border-amber-600 print-color-exact" title="Expiring <1yr"></div>;
-            return <div className="w-3 h-3 rounded-full bg-emerald-500 border border-emerald-600 print-color-exact" title="Good"></div>;
-        };
-
-        const formatDate = (dateStr) => {
-            if (!dateStr) return '';
-            const [y, m, d] = dateStr.split('-');
-            return `${m}/${d}/${y}`;
-        };
-
-        function App() {
-            const [user, setUser] = useState(null);
-            const [loading, setLoading] = useState(true);
-            const [activeTab, setActiveTab] = useState('dashboard');
-            const [dbSubTab, setDbSubTab] = useState('batteries');
-            const [archiveSubTab, setArchiveSubTab] = useState('recycling');
-            const [isDarkMode, setIsDarkMode] = useState(() => { try { return localStorage.getItem('theme') === 'dark'; } catch(e) { return false; } });
-            const [printMode, setPrintMode] = useState(false);
-            const [currentPrintReport, setCurrentPrintReport] = useState(null);
-            const [scanning, setScanning] = useState(false);
-            const [searchingModel, setSearchingModel] = useState(false);
-            const [addingLibItem, setAddingLibItem] = useState(false);
-            const [addingUpsItem, setAddingUpsItem] = useState(false);
-            const [archiveGroupBy, setArchiveGroupBy] = useState('location'); 
-            
-            // Print State
-            const [printGroupBy, setPrintGroupBy] = useState('report'); 
-            const [selectedReportItemIds, setSelectedReportItemIds] = useState(new Set()); 
-            const [printFilters, setPrintFilters] = useState({ sites: new Set(), buildings: new Set(), rooms: new Set() });
-
-            // Entry Mode
-            const [entryMode, setEntryMode] = useState('recycle'); 
-            const [currentReport, setCurrentReport] = useState(null); 
-            const [editingReportItemIndex, setEditingReportItemIndex] = useState(null);
-            const [reportSubTab, setReportSubTab] = useState('items'); 
-
-            // Data
-            const [logs, setLogs] = useState([]);
-            const [serviceReports, setServiceReports] = useState([]);
-            const [customLibrary, setCustomLibrary] = useState([]);
-            const [customUpsLibrary, setCustomUpsLibrary] = useState([]);
-            const [savedSources, setSavedSources] = useState([]);
-            const [savedData, setSavedData] = useState({ customers: [], sites: [], buildings: [], rooms: [] });
-            
-            // UI
-            const [dbSearch, setDbSearch] = useState('');
-            const [expandedFolders, setExpandedFolders] = useState(new Set());
-            const [expandedLibFolders, setExpandedLibFolders] = useState(new Set());
-            const [expandedUpsFolders, setExpandedUpsFolders] = useState(new Set());
-            const [selectedLogIds, setSelectedLogIds] = useState(new Set());
-
-            const [newLibData, setNewLibData] = useState({ id: null, manufacturer: '', model: '', type: 'Lead-Acid', weight: '', ah: '', life: '' });
-            const [newUpsData, setNewUpsData] = useState({ id: null, make: '', family: '', model: '', type: '', acV: '', dcV: '' });
-            
-            const [suggestions, setSuggestions] = useState([]);
-            const [upsSuggestions, setUpsSuggestions] = useState([]);
-            const [appSettings, setAppSettings] = useState({ companyName: 'BatteryCycle Track', logoUrl: '', themeColor: 'emerald', fontStyle: 'font-sans', showProtocols: true, dynamicReports: false, showDates: true, reportLogo: false, invertLogoPrint: false, reportUseCustomerName: false });
-            
-            const [editingId, setEditingId] = useState(null);
-            const [formData, setFormData] = useState({
-                batteryModel: '', manufacturer: '', type: 'Lead-Acid', lithiumType: '', unitWeight: '', totalWeight: '', count: '', 
-                ampHours: '', expectedLife: '', dateCode: '', notes: '', location: '', installDate: new Date().toISOString().split('T')[0], expiryDate: '', room: '', building: '', site: '',
-                upsMake: '', upsModel: '', upsSerial: '', upsKva: ''
-            });
-
-            const theme = THEMES[appSettings.themeColor] || THEMES.emerald;
-
-            // 2. DERIVED DATA
-            const activeLogs = useMemo(() => logs.filter(l => !l.archived), [logs]);
-            const archivedLogs = useMemo(() => logs.filter(l => l.archived), [logs]);
-            const allTimeStats = useMemo(() => logs.reduce((acc, l) => ({ weight: acc.weight + Number(l.weight||0), count: acc.count + Number(l.count||0) }), { weight: 0, count: 0 }), [logs]);
-
-            const fullLibrary = useMemo(() => {
-                const customMap = new Map(customLibrary.map(i => [((i.manufacturer||"").trim() + (i.model||"").trim()).toLowerCase(), i]));
-                const merged = [];
-                INITIAL_BATTERY_DB.forEach(initItem => {
-                    const key = ((initItem.manufacturer||"").trim() + (initItem.model||"").trim()).toLowerCase();
-                    if (!customMap.has(key)) merged.push(initItem);
-                });
-                return [...merged, ...customLibrary].sort((a,b) => (a.manufacturer||'').localeCompare(b.manufacturer||''));
-            }, [customLibrary]);
-
-            const fullUpsLibrary = useMemo(() => {
-                const customMap = new Map(customUpsLibrary.map(i => [((i.make||"").trim() + (i.model||"").trim()).toLowerCase(), i]));
-                const merged = [];
-                INITIAL_UPS_DB.forEach(initItem => {
-                    const key = ((initItem.make||"").trim() + (initItem.model||"").trim()).toLowerCase();
-                    if (!customMap.has(key)) merged.push(initItem);
-                });
-                return [...merged, ...customUpsLibrary].sort((a,b) => (a.make||'').localeCompare(b.make||''));
-            }, [customUpsLibrary]);
-
-            // Grouping Logic
-            const getGroupedLogs = (data, groupBy) => {
-                const groups = {};
-                data.filter(l => (l.location||'').toLowerCase().includes(dbSearch.toLowerCase()) || (l.batteryModel||'').toLowerCase().includes(dbSearch.toLowerCase()))
-                    .forEach(l => {
-                        let k = 'Unknown';
-                        if (groupBy === 'jobName') k = l.jobName || 'Unassigned Logs';
-                        else k = l[groupBy] || 'Unknown';
-                        if(!groups[k]) groups[k] = [];
-                        groups[k].push(l);
-                    });
-                return groups;
-            };
-
-            const getGroupedLibrary = (data) => {
-                const groups = {};
-                data.filter(l => (l.model||'').toLowerCase().includes(dbSearch.toLowerCase()) || (l.manufacturer||'').toLowerCase().includes(dbSearch.toLowerCase()))
-                    .forEach(l => {
-                        const k = l.manufacturer || 'Generic';
-                        if(!groups[k]) groups[k] = [];
-                        groups[k].push(l);
-                    });
-                return groups;
-            };
-
-            const groupedActive = useMemo(() => getGroupedLogs(activeLogs, 'location'), [activeLogs, dbSearch]);
-            const groupedArchive = useMemo(() => getGroupedLogs(archivedLogs, archiveGroupBy), [archivedLogs, dbSearch, archiveGroupBy]);
-            const groupedLib = useMemo(() => getGroupedLibrary(fullLibrary), [fullLibrary, dbSearch]);
-            
-            const groupedUps = useMemo(() => {
-                const s = dbSearch.toLowerCase();
-                const filtered = fullUpsLibrary.filter(u => 
-                    (u.make||'').toLowerCase().includes(s) || 
-                    (u.family||'').toLowerCase().includes(s) || 
-                    (u.model||'').toLowerCase().includes(s)
-                );
-                
-                const groups = {};
-                filtered.forEach(u => {
-                    const mk = u.make || 'Generic';
-                    const fam = u.family || 'General';
-                    if (!groups[mk]) groups[mk] = {};
-                    if (!groups[mk][fam]) groups[mk][fam] = [];
-                    groups[mk][fam].push(u);
-                });
-                return groups;
-            }, [fullUpsLibrary, dbSearch]);
-
-             const groupedReports = useMemo(() => {
-                 const groups = {};
-                serviceReports.filter(r => (r.customer||'').toLowerCase().includes(dbSearch.toLowerCase()) || (r.site||'').toLowerCase().includes(dbSearch.toLowerCase()))
-                    .forEach(r => {
-                        const k = r.customer || 'Unknown Customer';
-                        if(!groups[k]) groups[k] = [];
-                        groups[k].push(r);
-                    });
-                return groups;
-            }, [serviceReports, dbSearch]);
-
-
-            // 3. EFFECTS
-            useEffect(() => {
-                if (isDarkMode) { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); } 
-                else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); }
-            }, [isDarkMode]);
-
-            useEffect(() => { signInAnonymously(auth); return onAuthStateChanged(auth, setUser); }, []);
-
-            useEffect(() => {
-                if (!user) return;
-                const unsubLogs = onSnapshot(collection(db, 'recycling_logs'), s => setLogs(s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0))), () => setLoading(false));
-                const unsubReports = onSnapshot(collection(db, 'service_reports'), s => {
-                    const reps = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
-                    setServiceReports(reps);
-                    const customers = new Set(); const sites = new Set(); const buildings = new Set(); const rooms = new Set();
-                    reps.forEach(r => {
-                        if(r.customer) customers.add(r.customer);
-                        r.items.forEach(i => {
-                            if(i.site) sites.add(i.site);
-                            if(i.building) buildings.add(i.building);
-                            if(i.room) rooms.add(i.room);
-                        });
-                    });
-                    setSavedData({ customers: Array.from(customers), sites: Array.from(sites), buildings: Array.from(buildings), rooms: Array.from(rooms) });
-                });
-                const unsubLib = onSnapshot(collection(db, 'custom_library'), s => setCustomLibrary(s.docs.map(d => ({id:d.id, ...d.data()}))));
-                const unsubUpsLib = onSnapshot(collection(db, 'custom_ups_library'), s => setCustomUpsLibrary(s.docs.map(d => ({id:d.id, ...d.data()}))));
-                const unsubSrc = onSnapshot(collection(db, 'saved_sources'), s => setSavedSources(s.docs.map(d => String(d.data().name))));
-                getDoc(doc(db, 'settings', 'global_config')).then(s => s.exists() && setAppSettings(prev => ({...prev, ...s.data()})));
-                setLoading(false);
-                return () => { unsubLogs(); unsubReports(); unsubLib(); unsubUpsLib(); unsubSrc(); };
-            }, [user]);
-
-            useEffect(() => {
-                const u = parseFloat(formData.unitWeight) || 0;
-                const c = parseInt(formData.count) || 0;
-                if(u > 0 && c > 0) setFormData(p => ({...p, totalWeight: (u*c).toFixed(1)}));
-            }, [formData.unitWeight, formData.count]);
-
-            useEffect(() => {
-                if(formData.installDate && formData.expectedLife) {
-                    const lifeStr = String(formData.expectedLife);
-                    const years = parseInt(lifeStr.match(/\d+/)?.[0] || "0");
-                    if(years > 0) {
-                        const d = new Date(formData.installDate);
-                        d.setFullYear(d.getFullYear() + years);
-                        setFormData(p => ({...p, expiryDate: d.toISOString().split('T')[0]}));
-                    }
-                }
-            }, [formData.installDate, formData.expectedLife]);
-
-            // Handlers
-            const saveRecord = async (e) => {
-                e.preventDefault();
-                if (!user) return;
-                
-                if (entryMode === 'report') {
-                    if (!currentReport) { alert("Start a report first."); return; }
-                    const newItem = { ...formData, weight: parseFloat(formData.totalWeight)||0, unitWeight: parseFloat(formData.unitWeight)||0, count: parseInt(formData.count)||0, id: Date.now().toString() };
-                    
-                    if (editingReportItemIndex !== null) {
-                        const updatedItems = [...currentReport.items];
-                        updatedItems[editingReportItemIndex] = newItem;
-                        setCurrentReport(prev => ({ ...prev, items: updatedItems }));
-                        setEditingReportItemIndex(null);
-                    } else {
-                        setCurrentReport(prev => ({ ...prev, items: [...prev.items, newItem] }));
-                    }
-
-                    // Auto-Add UPS
-                    const upsKey = ((formData.upsMake||"").trim() + (formData.upsModel||"").trim()).toLowerCase();
-                    const upsExists = fullUpsLibrary.some(u => ((u.make||"").trim() + (u.model||"").trim()).toLowerCase() === upsKey);
-                    if (!upsExists && formData.upsMake && formData.upsModel) {
-                        await addDoc(collection(db, 'custom_ups_library'), { make: formData.upsMake, model: formData.upsModel, type: 'Other' });
-                    }
-
-                    // Keep context
-                    setFormData(prev => ({...prev, batteryModel: '', manufacturer: '', unitWeight: '', totalWeight: '', count: '', ampHours: '', expectedLife: '', dateCode: '', notes: ''})); 
-                } else {
-                    try {
-                        const payload = { ...formData, weight: parseFloat(formData.totalWeight)||0, unitWeight: parseFloat(formData.unitWeight)||0, count: parseInt(formData.count)||0, dateStr: new Date().toLocaleDateString(), archived: false };
-                        if(formData.location && !savedSources.includes(formData.location)) await addDoc(collection(db, 'saved_sources'), {name: formData.location});
-                        
-                        const modelKey = ((formData.manufacturer||"").trim() + (formData.batteryModel||"").trim()).toLowerCase();
-                        const exists = fullLibrary.some(b => ((b.manufacturer||"").trim() + (b.model||"").trim()).toLowerCase() === modelKey);
-                        if (!exists && formData.batteryModel && formData.manufacturer) {
-                            await addDoc(collection(db, 'custom_library'), { manufacturer: formData.manufacturer, model: formData.batteryModel, type: formData.type, weight: parseFloat(formData.unitWeight)||0, ah: formData.ampHours, life: formData.expectedLife });
-                        }
-
-                        if(editingId) {
-                            try { await updateDoc(doc(db, 'recycling_logs', editingId), payload); } 
-                            catch (err) { await setDoc(doc(db, 'recycling_logs', editingId), {...payload, createdAt: serverTimestamp()}); }
-                        }
-                        else await addDoc(collection(db, 'recycling_logs'), {...payload, createdAt: serverTimestamp()});
-                        
-                        setEditingId(null);
-                        setFormData({ batteryModel: '', manufacturer: '', type: 'Lead-Acid', lithiumType: '', unitWeight: '', totalWeight: '', count: '', ampHours: '', expectedLife: '', dateCode: '', notes: '', location: '', installDate: new Date().toISOString().split('T')[0], expiryDate: '', room: '', building: '', site: '', upsMake: '', upsModel: '', upsSerial: '', upsKva: '' });
-                        setActiveTab('dashboard');
-                    } catch(err) { console.error(err); alert("Error saving."); }
-                }
-            };
-
-            const startEditReportItem = (item, index) => { setFormData(item); setEditingReportItemIndex(index); };
-
-            const saveReportToDb = async () => {
-                if (!currentReport || currentReport.items.length === 0) return;
-                if (!confirm("Save this report?")) return;
-                try {
-                    const reportData = { ...currentReport, lastModified: serverTimestamp(), dateStr: currentReport.dateStr || new Date().toLocaleDateString() };
-                    if (currentReport.id) await updateDoc(doc(db, 'service_reports', currentReport.id), reportData);
-                    else await addDoc(collection(db, 'service_reports'), { ...reportData, createdAt: serverTimestamp() });
-                    setCurrentReport(null); setEntryMode('recycle'); setActiveTab('archives'); setArchiveSubTab('reports'); alert("Report Saved!");
-                } catch (e) { console.error(e); }
-            };
-
-            const openReportForEdit = (report) => { 
-                setCurrentReport({ ...report, serviceHistory: report.serviceHistory || [] }); 
-                setEntryMode('report'); 
-                setActiveTab('log'); 
-                setReportSubTab('items');
-            };
-
-            const logServiceEvent = async () => {
-                if(!currentReport) return;
-                const note = prompt("Enter service note (e.g. Annual PM, Fan Replacement):");
-                if(!note) return;
-                const newEvent = { date: new Date().toLocaleDateString(), note, user: "Tech" };
-                const updatedHistory = [...(currentReport.serviceHistory || []), newEvent];
-                setCurrentReport(prev => ({...prev, serviceHistory: updatedHistory}));
-                if(currentReport.id) { await updateDoc(doc(db, 'service_reports', currentReport.id), { serviceHistory: updatedHistory }); }
-            };
-
-            const saveSettings = async () => { if (!user) return; await setDoc(doc(db, 'settings', 'global_config'), appSettings); alert("Settings Saved!"); };
-
-            const clearRecycleLogs = async () => {
-                if(!confirm("DANGER: Permanently delete ALL recycling logs? This cannot be undone.")) return;
-                const batch = writeBatch(db);
-                logs.forEach(l => batch.delete(doc(db, 'recycling_logs', l.id)));
-                await batch.commit(); alert("Recycling logs cleared.");
-            };
-
-            const clearServiceReports = async () => {
-                if(!confirm("DANGER: Permanently delete ALL service reports? This cannot be undone.")) return;
-                const batch = writeBatch(db);
-                serviceReports.forEach(r => batch.delete(doc(db, 'service_reports', r.id)));
-                await batch.commit(); alert("Service reports cleared.");
-            };
-
-            const deleteServiceReport = async (e, reportId) => {
-                e.stopPropagation();
-                if(!confirm("Permanently delete this report?")) return;
-                await deleteDoc(doc(db, 'service_reports', reportId));
-            };
-
-            const handleNewLibSubmit = async (e) => {
-                e.preventDefault();
-                const dataToSave = { manufacturer: newLibData.manufacturer, model: newLibData.model, type: newLibData.type, weight: parseFloat(newLibData.weight)||0, ah: newLibData.ah, life: newLibData.life };
-                if(newLibData.id) await updateDoc(doc(db, 'custom_library', newLibData.id), dataToSave);
-                else await addDoc(collection(db, 'custom_library'), dataToSave);
-                setAddingLibItem(false); setNewLibData({ id: null, manufacturer: '', model: '', type: 'Lead-Acid', weight: '', ah: '', life: '' });
-            };
-
-            const handleNewUpsSubmit = async (e) => {
-                e.preventDefault();
-                const dataToSave = { make: newUpsData.make, family: newUpsData.family, model: newUpsData.model, type: newUpsData.type, acV: newUpsData.acV, dcV: newUpsData.dcV };
-                if(newUpsData.id) await updateDoc(doc(db, 'custom_ups_library', newUpsData.id), dataToSave);
-                else await addDoc(collection(db, 'custom_ups_library'), dataToSave);
-                setAddingUpsItem(false); setNewUpsData({ id: null, make: '', family: '', model: '', type: '', acV: '', dcV: '' });
-            };
-
-            const handleEditLibItem = (e, item) => {
-                e.stopPropagation();
-                setNewLibData({ id: item.id || null, manufacturer: item.manufacturer || '', model: item.model || '', type: item.type || 'Lead-Acid', weight: String(item.weight || ''), ah: String(item.ah || ''), life: String(item.life || '') });
-                setAddingLibItem(true); window.scrollTo({ top: 0, behavior: 'smooth' });
-            };
-
-            const handleEditUpsItem = (e, item) => {
-                e.stopPropagation();
-                setNewUpsData({ id: item.id || null, make: item.make || '', family: item.family || '', model: item.model || '', type: item.type || '', acV: item.acV || '', dcV: item.dcV || '' });
-                setAddingUpsItem(true); window.scrollTo({ top: 0, behavior: 'smooth' });
-            };
-            
-            const handleDeleteLibItem = async (e, item, col) => {
-                e.stopPropagation();
-                if (!item.id) { alert("Cannot delete built-in items."); return; }
-                if(confirm("Delete item?")) await deleteDoc(doc(db, col, item.id));
-            };
-
-            const handleModelSearch = (val) => {
-                setFormData(p => ({...p, batteryModel: val}));
-                if(val.length > 1) {
-                    const s = val.toLowerCase();
-                    setSuggestions(fullLibrary.filter(b => (b.model||'').toLowerCase().includes(s) || (b.manufacturer||'').toLowerCase().includes(s)));
-                } else setSuggestions([]);
-            };
-            
-            const handleUpsSearch = (val) => {
-                setFormData(p => ({...p, upsModel: val}));
-                if(val.length > 1) {
-                    const s = val.toLowerCase();
-                    setUpsSuggestions(fullUpsLibrary.filter(u => (u.model||'').toLowerCase().includes(s) || (u.make||'').toLowerCase().includes(s) || (u.family||'').toLowerCase().includes(s)));
-                } else setUpsSuggestions([]);
-            }
-
-            const selectBattery = (b) => {
-                setFormData(p => ({ ...p, batteryModel: b.model, manufacturer: b.manufacturer, type: b.type, unitWeight: String(b.weight), ampHours: String(b.ah||''), expectedLife: String(b.life||'') }));
-                setSuggestions([]);
-            };
-
-            const selectUps = (u) => {
-                setFormData(p => ({...p, upsMake: u.make, upsModel: `${u.family ? u.family + ' ' : ''}${u.model}`, upsKva: '' }));
-                setUpsSuggestions([]);
-            };
-
-            const aiScan = async (e) => {
-                const file = e.target.files[0]; if(!file) return;
-                if(!GEMINI_API_KEY) { alert("API Key missing."); return; }
-                setScanning(true);
-                const reader = new FileReader();
-                reader.onloadend = async () => {
-                    try {
-                        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ contents: [{ parts: [{text: "Analyze battery label. Return JSON: manufacturer, model, type, weight (lbs), ah, life."}, {inlineData: {mimeType: file.type, data: reader.result.split(',')[1]}}] }] }) });
-                        const data = await res.json();
-                        const json = JSON.parse(data.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/)[0]);
-                        setFormData(p => ({...p, batteryModel: json.model||'', manufacturer: json.manufacturer||'', type: json.type||'Lead-Acid', unitWeight: String(json.weight||''), ampHours: String(json.ah||''), expectedLife: String(json.life||'')}));
-                    } catch(err) { console.error(err); alert("Scan failed."); }
-                    setScanning(false);
-                };
-                reader.readAsDataURL(file);
-            };
-
-            const aiTextSearch = async () => {
-                if(!GEMINI_API_KEY || !formData.batteryModel) return;
-                setSearchingModel(true);
-                try {
-                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ contents: [{ parts: [{text: `Search specs for battery: ${formData.batteryModel}. Return JSON: manufacturer, type, weight (lbs), ah, life.`}] }] }) });
-                    const data = await res.json();
-                    const json = JSON.parse(data.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/)[0]);
-                    setFormData(p => ({...p, manufacturer: json.manufacturer||p.manufacturer, type: json.type||p.type, unitWeight: String(json.weight||p.unitWeight), ampHours: String(json.ah||p.ampHours), expectedLife: String(json.life||p.expectedLife)}));
-                } catch(err) { alert("AI Search failed."); }
-                setSearchingModel(false);
-            };
-
-            const toggleArchive = async (id, status) => {
-                if (!user) return;
-                try {
-                    await updateDoc(doc(db, 'recycling_logs', id), { archived: !status });
-                } catch (e) { console.error(e); }
-            };
-            
-            const groupArchivedItems = async () => {
-                if(selectedLogIds.size === 0) return;
-                const groupName = prompt("Enter Group/Job Name:", `Job - ${new Date().toLocaleDateString()}`);
-                if(!groupName) return;
-                const batch = writeBatch(db);
-                selectedLogIds.forEach(id => {
-                    batch.update(doc(db, 'recycling_logs', id), { archived: true, jobName: groupName });
-                });
-                await batch.commit();
-                setSelectedLogIds(new Set());
-                alert("Items Grouped & Archived.");
-                setArchiveGroupBy('jobName');
-            };
-
-            const batchRestore = async () => {
-                const batch = writeBatch(db);
-                selectedLogIds.forEach(id => batch.update(doc(db, 'recycling_logs', id), { archived: false }));
-                await batch.commit(); setSelectedLogIds(new Set()); alert("Restored Selected.");
-            };
-
-            const batchDelete = async () => {
-                if(!confirm("Permanently delete selected records?")) return;
-                const batch = writeBatch(db);
-                selectedLogIds.forEach(id => batch.delete(doc(db, 'recycling_logs', id)));
-                await batch.commit(); setSelectedLogIds(new Set()); alert("Deleted Selected.");
-            };
-
-            const togglePrintFilter = (category, value) => {
-                setPrintFilters(prev => {
-                    const newSet = new Set(prev[category]);
-                    if (newSet.has(value)) newSet.delete(value);
-                    else newSet.add(value);
-                    return { ...prev, [category]: newSet };
-                });
-            };
-
-            const toggleReportItemSelection = (itemId) => {
-                setSelectedReportItemIds(prev => {
-                    const newSet = new Set(prev);
-                    if (newSet.has(itemId)) newSet.delete(itemId); else newSet.add(itemId);
-                    return newSet;
-                });
-            };
-
-            const toggleWholeReportSelection = (report) => {
-                setSelectedReportItemIds(prev => {
-                    const newSet = new Set(prev);
-                    const itemIds = report.items.map(i => i.id);
-                    const allSelected = itemIds.every(id => newSet.has(id));
-                    itemIds.forEach(id => allSelected ? newSet.delete(id) : newSet.add(id));
-                    return newSet;
-                });
-            };
-
-            const startPM = (oldReport) => {
-                if(!confirm("Create a new PM Report based on this one?")) return;
-                const newReport = {
-                    ...oldReport,
-                    id: null, 
-                    dateStr: new Date().toLocaleDateString(),
-                    items: oldReport.items.map(i => ({...i, id: Date.now() + Math.random(), notes: ''}))
-                };
-                setCurrentReport(newReport);
-                setEntryMode('report');
-                setActiveTab('log');
-            };
-
-            if (loading) return <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-400"><Loader2 className="animate-spin mr-2" /> Loading...</div>;
-
-            // --- PRINT REPORT ---
-            if (printMode) {
-                let itemsToPrint = [];
-                let title = appSettings.companyName;
-                let subHeader = "Recycling Manifest";
-                let isServiceReport = false;
-
-                if (currentPrintReport) {
-                    if (selectedReportItemIds.size > 0) itemsToPrint = currentPrintReport.items.filter(i => selectedReportItemIds.has(i.id));
-                    else itemsToPrint = currentPrintReport.items;
-                    title = currentPrintReport.customer;
-                    subHeader = `${currentPrintReport.site || ''} - ${currentPrintReport.dateStr}`;
-                    isServiceReport = true;
-                } else if (activeTab === 'archives' && archiveSubTab === 'reports') {
-                    // Collect items from multiple selected reports
-                    const selectedReports = serviceReports.filter(r => selectedReportItemIds.has(r.id)); // Using the same ID set for whole reports? No, wait.
-                    // The UI for selecting multiple reports in Archives uses 'selectedReportItemIds'? 
-                    // No, usually reusing selectedLogIds for consistency or making a new state.
-                    // Let's assume user checked multiple reports. 
-                    // To simplify, let's use selectedReportItemIds to track individual items across ALL reports if expanded.
-                    
-                    // Actually, let's flatten ALL service report items that are checked
-                    const allServiceItems = serviceReports.flatMap(r => r.items.map(i => ({...i, reportId: r.id, reportCustomer: r.customer, reportSite: r.site})));
-                    itemsToPrint = allServiceItems.filter(i => selectedReportItemIds.has(i.id));
-                    isServiceReport = true;
-                    if(itemsToPrint.length > 0) subHeader = "Composite Service Report";
-                } else {
-                    const source = activeTab === 'archives' ? archivedLogs : activeLogs;
-                    itemsToPrint = selectedLogIds.size > 0 ? source.filter(l => selectedLogIds.has(l.id)) : source;
-                    if (appSettings.dynamicReports) {
-                        const locs = [...new Set(itemsToPrint.map(l => l.location))];
-                        if (locs.length === 1) title = locs[0];
-                    }
-                }
-
-                const filteredItems = itemsToPrint.filter(item => {
-                    if (!isServiceReport) return true;
-                    if (printFilters.sites.size > 0 && !printFilters.sites.has(item.site)) return false;
-                    if (printFilters.buildings.size > 0 && !printFilters.buildings.has(item.building)) return false;
-                    if (printFilters.rooms.size > 0 && !printFilters.rooms.has(item.room)) return false;
-                    return true;
-                });
-
-                const reportGroups = filteredItems.reduce((acc, item) => {
-                    const site = item.site || item.location || 'General Site';
-                    const bldg = item.building || 'Main Building';
-                    const room = item.room || 'General Area';
-                    const upsKey = item.upsSerial ? `${item.upsMake} ${item.upsModel} (SN: ${item.upsSerial})` : 'General Equipment';
-                    
-                    if (!acc[site]) acc[site] = {};
-                    if (!acc[site][bldg]) acc[site][bldg] = {};
-                    if (!acc[site][bldg][room]) acc[site][bldg][room] = {};
-                    if (!acc[site][bldg][room][upsKey]) acc[site][bldg][room][upsKey] = [];
-                    acc[site][bldg][room][upsKey].push(item);
-                    return acc;
-                }, {});
-
-                return (
-                    <div className="min-h-screen bg-white text-black p-8 font-sans">
-                        <div className="no-print mb-8 bg-slate-100 p-4 rounded border">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="font-bold">Report Configuration</h2>
-                                <div className="flex gap-2"><button onClick={()=>window.print()} className={`px-4 py-2 text-white rounded ${theme.primary}`}>Print</button><button onClick={()=>{setPrintMode(false); setCurrentPrintReport(null); setSelectedReportItemIds(new Set());}} className="px-4 py-2 border rounded bg-white text-black">Close</button></div>
-                            </div>
-                            {isServiceReport && (
-                                <div className="grid grid-cols-3 gap-4 text-xs">
-                                    <div><p className="font-bold mb-1">Filter Sites</p>{[...new Set(itemsToPrint.map(i => i.site).filter(Boolean))].map(s => <label key={s} className="flex items-center"><input type="checkbox" checked={!printFilters.sites.has(s)} onChange={()=>togglePrintFilter('sites', s)} className="mr-2"/>{s}</label>)}</div>
-                                    <div><p className="font-bold mb-1">Filter Buildings</p>{[...new Set(itemsToPrint.map(i => i.building).filter(Boolean))].map(s => <label key={s} className="flex items-center"><input type="checkbox" checked={!printFilters.buildings.has(s)} onChange={()=>togglePrintFilter('buildings', s)} className="mr-2"/>{s}</label>)}</div>
-                                    <div><p className="font-bold mb-1">Filter Rooms</p>{[...new Set(itemsToPrint.map(i => i.room).filter(Boolean))].map(s => <label key={s} className="flex items-center"><input type="checkbox" checked={!printFilters.rooms.has(s)} onChange={()=>togglePrintFilter('rooms', s)} className="mr-2"/>{s}</label>)}</div>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex justify-between items-end border-b-2 border-black pb-4 mb-6">
-                            <div className="flex items-center gap-4">
-                                {appSettings.reportLogo && appSettings.logoUrl && <img src={appSettings.logoUrl} className={`h-12 object-contain ${appSettings.invertLogoPrint ? 'invert' : ''}`}/>}
-                                <div><h1 className="text-3xl font-bold uppercase tracking-tight">{title}</h1><p className="text-sm text-gray-500">{subHeader}</p></div>
-                            </div>
-                            <div className="text-right text-sm"><p>{new Date().toLocaleDateString('en-US')}</p><p className="font-bold">Total: {filteredItems.reduce((a,l)=>a+Number(l.weight),0).toLocaleString()} lbs</p></div>
-                        </div>
-                        
-                        {Object.entries(reportGroups).map(([site, bldgs]) => (
-                            <div key={site} className="mb-8">
-                                {Object.keys(reportGroups).length > 1 && <h2 className="text-xl font-bold mb-2 uppercase border-b border-slate-400 pb-1">{site}</h2>}
-                                {Object.entries(bldgs).map(([bldg, rooms]) => (
-                                    <div key={bldg} className="mb-6 pl-0">
-                                        {(Object.keys(bldgs).length > 1 || bldg !== 'Main Building') && <h3 className="text-lg font-bold mb-2 text-slate-800">{bldg}</h3>}
-                                        {Object.entries(rooms).map(([room, upsUnits]) => (
-                                            <div key={room} className="mb-6 break-inside-avoid">
-                                                <h4 className="font-bold text-sm uppercase mb-2 pl-2 bg-slate-200 py-1 group-header border border-slate-300">{room}</h4>
-                                                {Object.entries(upsUnits).map(([upsName, items]) => (
-                                                    <div key={upsName} className="mb-4 pl-2">
-                                                        <div className="text-xs font-bold mb-1 ups-header text-blue-800 uppercase">{upsName} {items[0].upsKva ? `(${items[0].upsKva})` : ''}</div>
-                                                        <table className="w-full text-left text-sm print-bordered">
-                                                            <thead><tr className="bg-slate-50"><th>Manufacturer / Model</th>{appSettings.showDates && <th>Install / Exp / Status</th>}<th className="text-right">Unit Lbs</th><th className="text-right">Qty</th><th className="text-right">Total Lbs</th><th>Notes</th></tr></thead>
-                                                            <tbody>{items.map((l, idx) => (
-                                                                <tr key={idx} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50 zebra-row-odd'}`}>
-                                                                    <td className="py-1"><span className="font-bold">{l.manufacturer}</span> {l.batteryModel}</td>
-                                                                    {appSettings.showDates && <td className="py-1 text-xs flex items-center gap-2">{formatDate(l.installDate) || '-'} / {formatDate(l.expiryDate) || '-'} <StatusIcon date={l.expiryDate}/></td>}
-                                                                    <td className="py-1 text-right">{l.unitWeight}</td><td className="py-1 text-right font-bold">{l.count}</td><td className="py-1 text-right font-mono">{l.weight}</td>
-                                                                    <td className="py-1 text-xs italic">{l.notes}</td>
-                                                                </tr>
-                                                            ))}</tbody>
-                                                        </table>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ))}
-                                    </div>
-                                ))}
-                            </div>
-                        ))}
-                    </div>
-                );
-            }
-
-            return (
-                <div className={`${appSettings.fontStyle} text-sm md:text-base flex flex-col h-screen`}>
-                    <div className={`z-50 sticky top-0 w-full p-3 md:px-6 flex justify-between items-center bg-slate-900 text-white shadow-md`}>
-                        <div className="flex items-center space-x-3">
-                            {appSettings.logoUrl ? <img src={appSettings.logoUrl} className="h-8 md:h-10 object-contain" /> : <div className={`p-2 rounded-lg ${theme.primary} text-white`}><Battery size={20}/></div>}
-                            <h1 className="text-lg md:text-xl font-bold tracking-tight">{String(appSettings.companyName)}</h1>
-                        </div>
-                        <nav className="hidden md:flex gap-1">{['dashboard', 'log', 'database', 'archives', 'settings'].map(t => (<button key={t} onClick={() => setActiveTab(t)} className={`px-4 py-2 rounded-lg font-bold capitalize transition-all ${activeTab === t ? `${theme.primary} text-white shadow-md` : 'hover:bg-slate-800'}`}>{t}</button>))}</nav>
-                        <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-full hover:bg-slate-800 transition-colors">{isDarkMode ? <Sun size={20} className="text-amber-400" /> : <Moon size={20} className="text-slate-400" />}</button>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
-                        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            
-                            <div className="lg:col-span-2 space-y-6">
-                                {activeTab === 'dashboard' && (
-                                    <>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <Card className={`p-6 border-l-4 ${theme.border}`}><p className="text-xs font-bold opacity-60 uppercase tracking-wider">Total Recycled</p><h3 className="text-3xl font-bold mt-1">{activeLogs.reduce((a,l)=>a+Number(l.weight),0).toLocaleString()} <span className="text-sm font-normal opacity-50">lbs</span></h3></Card>
-                                            <Card className="p-6 border-l-4 border-slate-400 dark:border-slate-600"><p className="text-xs font-bold opacity-60 uppercase tracking-wider">Total Units</p><h3 className="text-3xl font-bold mt-1">{activeLogs.reduce((a,l)=>a+Number(l.count),0).toLocaleString()}</h3></Card>
-                                        </div>
-                                        <Card>
-                                            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center"><h3 className="font-bold text-sm uppercase opacity-70">Active Manifests</h3>
-                                                <div className="flex gap-2">
-                                                    <button onClick={groupArchivedItems} disabled={selectedLogIds.size===0} className={`flex items-center text-xs px-3 py-1.5 rounded font-bold text-white ${selectedLogIds.size > 0 ? theme.primary : 'bg-slate-400'}`}><Briefcase size={14} className="mr-1"/> Group Archive</button>
-                                                    <button onClick={() => setPrintMode(true)} className="flex items-center text-xs bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded hover:opacity-80"><Printer size={14} className="mr-1"/> Print</button>
-                                                </div>
-                                            </div>
-                                            <div className="overflow-x-auto max-h-[600px]">
-                                                <table className="w-full text-left text-sm">
-                                                    <thead className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase font-bold opacity-70 sticky top-0"><tr><th className="p-4 w-10"><button onClick={() => setSelectedLogIds(selectedLogIds.size === activeLogs.length ? new Set() : new Set(activeLogs.map(l => l.id)))}>{selectedLogIds.size === activeLogs.length && activeLogs.length > 0 ? <CheckSquare size={16} /> : <Square size={16} />}</button></th><th>Source / Model</th>{appSettings.showDates && <th>Dates</th>}<th className="text-right">Unit</th><th className="text-right">Qty</th><th className="text-right">Total</th><th className="p-4 text-center">Act</th></tr></thead>
-                                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                                        {activeLogs.map((l, idx) => (
-                                                            <tr key={l.id} className={`hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800/50'}`}>
-                                                                <td className="p-4"><button onClick={() => setSelectedLogIds(p => { const n = new Set(p); n.has(l.id) ? n.delete(l.id) : n.add(l.id); return n; })}>{selectedLogIds.has(l.id) ? <CheckSquare size={16} className="text-emerald-500"/> : <Square size={16} className="text-slate-300"/>}</button></td>
-                                                                <td><div className="font-bold flex items-center gap-2">{appSettings.showDates && <StatusIcon date={l.expiryDate} />} {l.location}</div><div className="text-xs opacity-60 ml-5">{l.manufacturer} {l.batteryModel}</div></td>
-                                                                {appSettings.showDates && <td className="text-[10px] opacity-70">In: {formatDate(l.installDate) || '-'}<br/>Ex: {formatDate(l.expiryDate) || '-'}</td>}
-                                                                <td className="text-right opacity-70">{l.unitWeight}</td><td className="text-right font-bold">{l.count}</td><td className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">{l.weight}</td>
-                                                                <td className="p-4 text-center flex justify-center gap-2"><button onClick={() => { setEditingId(l.id); setFormData(l); setActiveTab('log'); }} className="hover:text-blue-500"><Edit2 size={16}/></button><button onClick={() => toggleArchive(l.id, false)} className="hover:text-amber-500"><Archive size={16}/></button></td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </Card>
-                                    </>
-                                )}
-
-                                {activeTab === 'log' && (
-                                    <Card className="p-6 md:p-8 relative overflow-visible">
-                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                                            <h2 className="text-2xl font-bold mb-4 md:mb-0">{editingId ? 'Edit Entry' : 'New Entry'}</h2>
-                                            <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg">
-                                                <button onClick={() => { setEntryMode('recycle'); setCurrentReport(null); }} className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${entryMode === 'recycle' ? 'bg-white dark:bg-slate-700 shadow text-emerald-600' : 'text-slate-400'}`}>Quick Recycle</button>
-                                                <button onClick={() => { setEntryMode('report'); }} className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${entryMode === 'report' ? 'bg-white dark:bg-slate-700 shadow text-blue-600' : 'text-slate-400'}`}>Start Service Report</button>
-                                            </div>
-                                        </div>
-
-                                        {entryMode === 'report' && !currentReport ? (
-                                            <div className="space-y-4">
-                                                <h3 className="font-bold text-lg">Start New Service Job</h3>
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div><label className="text-xs font-bold mb-1 block">Customer</label><input list="customers" id="jobCust" className="p-3 w-full rounded border dark:bg-slate-900 dark:border-slate-700" /><datalist id="customers">{savedData.customers.map(c=><option key={c} value={c}/>)}</datalist></div>
-                                                    <div><label className="text-xs font-bold mb-1 block">Site / Location</label><input list="sites" id="jobSite" className="p-3 w-full rounded border dark:bg-slate-900 dark:border-slate-700" /><datalist id="sites">{savedData.sites.map(s=><option key={s} value={s}/>)}</datalist></div>
-                                                </div>
-                                                <button onClick={() => {
-                                                    const c = document.getElementById('jobCust').value;
-                                                    const s = document.getElementById('jobSite').value;
-                                                    if(c) setCurrentReport({ customer: c, site: s || 'Main Site', items: [], id: null });
-                                                    else alert("Enter Customer.");
-                                                }} className="w-full py-3 bg-blue-600 text-white rounded font-bold">Create Report Context</button>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                {entryMode === 'report' && (
-                                                    <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                                                        <div className="flex justify-between items-center mb-4">
-                                                            <div><h3 className="font-bold text-blue-700 dark:text-blue-300">{currentReport.customer}</h3><p className="text-xs opacity-70">{currentReport.site}</p></div>
-                                                            <div className="flex gap-2">
-                                                                <button onClick={() => { setReportSubTab('history'); }} className="px-3 py-1.5 border hover:bg-slate-100 rounded text-xs">History / Logs</button>
-                                                                <button onClick={saveReportToDb} className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded shadow hover:bg-blue-700">Save Report</button>
-                                                            </div>
-                                                        </div>
-                                                        {reportSubTab === 'items' ? (
-                                                            <div className="max-h-32 overflow-y-auto text-xs space-y-1">
-                                                                {currentReport.items.map((i,idx) => (
-                                                                    <div key={idx} className="flex justify-between items-center border-b border-blue-100 dark:border-blue-800/50 py-1 hover:bg-blue-100/50 cursor-pointer p-1 rounded">
-                                                                        <span>{i.building} / {i.room}: {i.batteryModel}</span>
-                                                                        <div className="flex gap-2"><span>{i.count}x</span><button onClick={() => startEditReportItem(i, idx)}><Edit2 size={12}/></button></div>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        ) : (
-                                                            <div className="p-2">
-                                                                <div className="flex justify-between mb-2"><h4 className="font-bold text-xs">Service Events</h4><button onClick={logServiceEvent} className="text-[10px] text-blue-500 font-bold border px-2 rounded">Log Maintenance</button></div>
-                                                                <div className="space-y-1 text-xs">{currentReport.serviceHistory && currentReport.serviceHistory.map((h,i) => <div key={i} className="flex justify-between border-b py-1"><span>{h.date}: {h.note}</span></div>)}</div>
-                                                                <button onClick={() => setReportSubTab('items')} className="mt-2 text-xs underline">Back to Items</button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-
-                                                <form onSubmit={saveRecord} className="space-y-6">
-                                                    {entryMode === 'report' && (
-                                                        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border dark:border-slate-800 mb-4">
-                                                            <h4 className="text-xs font-bold uppercase mb-3 flex items-center text-blue-500"><MapPin size={14} className="mr-1"/> Location & Equipment</h4>
-                                                            <div className="grid grid-cols-2 gap-4 mb-4">
-                                                                <div><label className="text-[10px] font-bold uppercase opacity-50 mb-1 block">Site Name</label><input list="sites" value={formData.site} onChange={e=>setFormData({...formData, site: e.target.value})} className="w-full p-2.5 rounded border dark:border-slate-700 dark:bg-slate-900 text-xs" /><datalist id="sites">{savedData.sites.map(s=><option key={s} value={s}/>)}</datalist></div>
-                                                                <div><label className="text-[10px] font-bold uppercase opacity-50 mb-1 block">Building</label><input list="buildings" value={formData.building} onChange={e=>setFormData({...formData, building: e.target.value})} className="w-full p-2.5 rounded border dark:border-slate-700 dark:bg-slate-900 text-xs" /><datalist id="buildings">{savedData.buildings.map(b=><option key={b} value={b}/>)}</datalist></div>
-                                                            </div>
-                                                            <div className="mb-4">
-                                                                <label className="text-[10px] font-bold uppercase opacity-50 mb-1 block">Room / Area</label><input list="rooms" value={formData.room} onChange={e=>setFormData({...formData, room: e.target.value})} className="w-full p-2.5 rounded border dark:border-slate-700 dark:bg-slate-900 text-xs" /><datalist id="rooms">{savedData.rooms.map(r=><option key={r} value={r}/>)}</datalist>
-                                                            </div>
-                                                            <div className="grid grid-cols-2 gap-2">
-                                                                <div className="relative"><input placeholder="UPS Make" value={formData.upsMake} onChange={(e) => {setFormData({...formData, upsMake: e.target.value}); if(e.target.value.length>1) setUpsSuggestions(groupedUps[e.target.value] ? Object.values(groupedUps[e.target.value]).flat() : fullUpsLibrary.filter(u=>u.make.toLowerCase().includes(e.target.value.toLowerCase()))); else setUpsSuggestions([]);}} className="p-2 w-full text-xs border rounded dark:bg-slate-900 dark:border-slate-700" />
-                                                                {upsSuggestions.length > 0 && <div className="absolute z-10 w-full bg-white dark:bg-slate-800 border dark:border-slate-700 max-h-32 overflow-y-auto">{upsSuggestions.map((u,i)=><div key={i} className="p-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer" onClick={()=>{selectUps(u)}}>{u.make} {u.model}</div>)}</div>}</div>
-                                                                <input placeholder="UPS Model" value={formData.upsModel} onChange={e=>setFormData({...formData, upsModel: e.target.value})} className="p-2 text-xs border rounded dark:bg-slate-900 dark:border-slate-700" />
-                                                                <input placeholder="Serial #" value={formData.upsSerial} onChange={e=>setFormData({...formData, upsSerial: e.target.value})} className="p-2 text-xs border rounded dark:bg-slate-900 dark:border-slate-700" />
-                                                                <input placeholder="kVa Rating" value={formData.upsKva} onChange={e=>setFormData({...formData, upsKva: e.target.value})} className="p-2 text-xs border rounded dark:bg-slate-900 dark:border-slate-700" />
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                        <div className="relative"><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Battery Model</label><div className="flex gap-2"><input value={formData.batteryModel} onChange={(e) => handleModelSearch(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500 outline-none transition-all" placeholder="Type model..." /><button type="button" onClick={aiTextSearch} disabled={searchingModel} className="p-3 border rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">{searchingModel ? <Loader2 className="animate-spin"/> : <Sparkles className="text-amber-500"/>}</button></div>
-                                                        {suggestions.length > 0 && <div className="absolute z-50 w-full mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border dark:border-slate-700 max-h-60 overflow-y-auto p-1">{suggestions.map((s,i) => <div key={i} onClick={() => selectBattery(s)} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg cursor-pointer border-b dark:border-slate-700 last:border-0 flex justify-between"><span className="font-bold">{s.manufacturer} {s.model}</span><span className="text-xs opacity-50">{s.weight} lbs</span></div>)}</div>}</div>
-                                                        <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Manufacturer</label><input value={formData.manufacturer} onChange={e=>setFormData({...formData, manufacturer: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900" /></div>
-                                                    </div>
-                                                    
-                                                    {entryMode !== 'report' && (
-                                                        <div className="grid grid-cols-2 gap-6">
-                                                            <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Source / Customer</label><input list="sources" value={formData.location} onChange={e=>setFormData({...formData, location: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900" /><datalist id="sources">{savedSources.map(s=><option key={s} value={s}/>)}</datalist></div>
-                                                            <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Type</label><select value={formData.type} onChange={e=>setFormData({...formData, type: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"><option>Lead-Acid</option><option>Wet Cell</option><option>Li-ion</option></select></div>
-                                                        </div>
-                                                    )}
-
-                                                    <div className="grid grid-cols-3 gap-4 bg-slate-100 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-                                                        <div><label className="text-[10px] font-bold uppercase opacity-50">Unit Lbs</label><input type="number" step="0.1" value={formData.unitWeight} onChange={e=>setFormData({...formData, unitWeight: e.target.value})} className="w-full p-2 bg-transparent border-b border-slate-300 dark:border-slate-600 focus:border-emerald-500 outline-none font-mono font-bold" placeholder="0.0" /></div>
-                                                        <div><label className="text-[10px] font-bold uppercase opacity-50">Count</label><input type="number" value={formData.count} onChange={e=>setFormData({...formData, count: e.target.value})} className="w-full p-2 bg-transparent border-b border-slate-300 dark:border-slate-600 focus:border-emerald-500 outline-none font-mono font-bold" placeholder="0" /></div>
-                                                        <div><label className="text-[10px] font-bold uppercase opacity-50">Total Lbs</label><input readOnly value={formData.totalWeight} className="w-full p-2 bg-transparent border-b border-transparent font-mono font-bold text-emerald-600" /></div>
-                                                    </div>
-
-                                                    {appSettings.showDates && (
-                                                        <div className="grid grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-800/30 p-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-                                                            <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Install Date</label><input type="date" value={formData.installDate} onChange={e=>setFormData({...formData, installDate: e.target.value})} className="w-full p-2 rounded-lg border dark:border-slate-600 dark:bg-slate-800" /></div>
-                                                            <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Expected Life</label><input type="text" placeholder="e.g. 5 Years" value={formData.expectedLife} onChange={e=>setFormData({...formData, expectedLife: e.target.value})} className="w-full p-2 rounded-lg border dark:border-slate-600 dark:bg-slate-800" /></div>
-                                                            <div className="col-span-2"><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Expiry (Auto-Calc)</label><input type="date" value={formData.expiryDate} onChange={e=>setFormData({...formData, expiryDate: e.target.value})} className="w-full p-2 rounded-lg border dark:border-slate-600 dark:bg-slate-800 font-bold text-slate-600 dark:text-slate-300" /></div>
-                                                        </div>
-                                                    )}
-                                                    
-                                                    {entryMode === 'report' && (
-                                                        <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Item Notes</label><input value={formData.notes} onChange={e=>setFormData({...formData, notes: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900" placeholder="e.g. String 1, Shelf 2"/></div>
-                                                    )}
-
-                                                    <div className="flex justify-between items-center">
-                                                        <div className="flex gap-2">
-                                                            <label className={`flex items-center px-3 py-2 rounded-lg cursor-pointer bg-slate-200 dark:bg-slate-800 hover:opacity-80`}>
-                                                                <Camera size={16} className="mr-2"/> <span className="text-xs font-bold">Scan</span>
-                                                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={aiScan} disabled={scanning}/>
-                                                            </label>
-                                                        </div>
-                                                        <button type="submit" className={`px-8 py-3 rounded-xl font-bold text-white shadow-xl transition-all hover:scale-[1.02] active:scale-95 ${entryMode === 'report' ? 'bg-blue-600' : theme.primary}`}>{editingReportItemIndex !== null ? 'Update Item' : (editingId ? 'Update Entry' : (entryMode === 'report' ? 'Add to Report' : 'Save Log'))}</button>
-                                                    </div>
-                                                </form>
-                                            </>
-                                        )}
-                                    </Card>
-                                )}
-
-                                {activeTab === 'database' && (
-                                    <div className="space-y-6">
-                                        <div className="flex justify-between items-center">
-                                            <div className="flex gap-2 p-1 bg-white dark:bg-slate-800 rounded-lg border dark:border-slate-700">
-                                                <button onClick={() => setDbSubTab('batteries')} className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${dbSubTab === 'batteries' ? `${theme.primary} text-white shadow-md` : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}>Batteries</button>
-                                                <button onClick={() => setDbSubTab('ups')} className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${dbSubTab === 'ups' ? `${theme.primary} text-white shadow-md` : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}>UPS Equipment</button>
-                                            </div>
-                                            {dbSubTab === 'batteries' ? (
-                                                <button onClick={() => setAddingLibItem(true)} className="flex items-center px-3 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold shadow hover:bg-emerald-600"><Plus size={14} className="mr-1"/> Add Battery</button>
-                                            ) : (
-                                                <button onClick={() => setAddingUpsItem(true)} className="flex items-center px-3 py-2 bg-blue-500 text-white rounded-lg text-xs font-bold shadow hover:bg-blue-600"><Plus size={14} className="mr-1"/> Add UPS</button>
-                                            )}
-                                        </div>
-
-                                        {addingLibItem && (
-                                            <Card className="p-4 border-emerald-500 border-2">
-                                                <h3 className="font-bold text-xs uppercase mb-3">New Battery Spec</h3>
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-                                                    <input placeholder="Manufacturer" value={newLibData.manufacturer} onChange={e=>setNewLibData({...newLibData, manufacturer: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
-                                                    <input placeholder="Model" value={newLibData.model} onChange={e=>setNewLibData({...newLibData, model: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
-                                                    <input placeholder="Lbs" type="number" value={newLibData.weight} onChange={e=>setNewLibData({...newLibData, weight: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
-                                                    <select value={newLibData.type} onChange={e=>setNewLibData({...newLibData, type: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900"><option>Lead-Acid</option><option>Wet Cell</option><option>Li-ion</option></select>
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-2 mb-3">
-                                                    <input placeholder="Expected Life" value={newLibData.life} onChange={e=>setNewLibData({...newLibData, life: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
-                                                    <input placeholder="Amp Hours" value={newLibData.ah} onChange={e=>setNewLibData({...newLibData, ah: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
-                                                </div>
-                                                <div className="flex justify-end gap-2"><button onClick={() => setAddingLibItem(false)} className="px-3 py-1 text-xs border rounded">Cancel</button><button onClick={handleNewLibSubmit} className="px-3 py-1 text-xs bg-emerald-500 text-white rounded font-bold">Save Spec</button></div>
-                                            </Card>
-                                        )}
-                                        
-                                        {addingUpsItem && (
-                                            <Card className="p-4 border-blue-500 border-2">
-                                                <h3 className="font-bold text-xs uppercase mb-3">New UPS Spec</h3>
-                                                <div className="grid grid-cols-3 gap-2 mb-3">
-                                                    <input placeholder="Make" value={newUpsData.make} onChange={e=>setNewUpsData({...newUpsData, make: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
-                                                    <input placeholder="Model" value={newUpsData.model} onChange={e=>setNewUpsData({...newUpsData, model: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
-                                                    <input placeholder="Type (3-Phase/Single)" value={newUpsData.type} onChange={e=>setNewUpsData({...newUpsData, type: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
-                                                    <input placeholder="Family" value={newUpsData.family} onChange={e=>setNewUpsData({...newUpsData, family: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
-                                                </div>
-                                                <div className="flex justify-end gap-2"><button onClick={() => setAddingUpsItem(false)} className="px-3 py-1 text-xs border rounded">Cancel</button><button onClick={handleNewUpsSubmit} className="px-3 py-1 text-xs bg-blue-500 text-white rounded font-bold">Save UPS</button></div>
-                                            </Card>
-                                        )}
-
-                                        <Card className="min-h-[400px]">
-                                            <div className="p-4 border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center"><Search size={14} className="opacity-50 mr-2"/><input placeholder="Search database..." value={dbSearch} onChange={e=>setDbSearch(e.target.value)} className="bg-transparent outline-none text-sm w-full" /></div>
-                                            <div className="p-4 space-y-2 max-h-[600px] overflow-y-auto">
-                                                {dbSubTab === 'batteries' ? Object.entries(groupedLib).map(([manuf, items]) => (
-                                                    <div key={manuf} className="border dark:border-slate-700 rounded-lg overflow-hidden">
-                                                        <button onClick={() => setExpandedLibFolders(p => { const n = new Set(p); n.has(manuf) ? n.delete(manuf) : n.add(manuf); return n; })} className="w-full p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                                            <div className="flex items-center gap-3"><Folder size={18} className="text-emerald-400"/><span className="font-bold text-sm">{manuf}</span></div><span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded opacity-70">{items.length}</span>
-                                                        </button>
-                                                        {expandedLibFolders.has(manuf) && (
-                                                            <div className="bg-slate-50 dark:bg-slate-900/50 border-t dark:border-slate-700 p-2 grid grid-cols-1 gap-2">
-                                                                {items.map((b,i) => (
-                                                                    <div key={i} className={`p-2 bg-white dark:bg-slate-800 rounded border dark:border-slate-700 flex justify-between group cursor-pointer hover:border-emerald-500 ${i % 2 === 0 ? 'bg-slate-50 dark:bg-slate-900' : ''}`}>
-                                                                        <div onClick={() => { setFormData({ batteryModel: b.model, manufacturer: b.manufacturer, type: b.type, unitWeight: String(b.weight), ampHours: String(b.ah||''), expectedLife: String(b.life||'') }); setActiveTab('log'); }}>
-                                                                            <span className="text-xs font-bold block">{b.model}</span><span className="text-[10px] opacity-60">Type: {b.type} • {b.weight} lbs • Life: {b.life || 'N/A'} • AH: {b.ah || 'N/A'}</span>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-                                                                            <button onClick={(e) => handleEditLibItem(e, b)} className="hover:bg-slate-100 dark:hover:bg-slate-700 p-1 rounded"><MoreHorizontal size={14}/></button>
-                                                                            {b.id && <button onClick={(e) => handleDeleteLibItem(e, b, 'custom_library')} className="hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded text-red-500"><Trash2 size={14}/></button>}
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )) : (
-                                                    // UPS LIST
-                                                    Object.entries(groupedUps).map(([make, families]) => (
-                                                        <div key={make} className="border dark:border-slate-700 rounded-lg overflow-hidden">
-                                                            <button onClick={() => setExpandedUpsFolders(p => { const n = new Set(p); n.has(make) ? n.delete(make) : n.add(make); return n; })} className="w-full p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                                                <div className="flex items-center gap-3"><Server size={18} className="text-blue-400"/><span className="font-bold text-sm">{make}</span></div>
-                                                            </button>
-                                                            {expandedUpsFolders.has(make) && (
-                                                                <div className="bg-slate-50 dark:bg-slate-900/50 border-t dark:border-slate-700 p-2">
-                                                                    {Object.entries(families).map(([fam, models]) => (
-                                                                        <div key={fam} className="mb-2">
-                                                                            <h4 className="text-[10px] font-bold uppercase text-slate-500 pl-2 mb-1">{fam}</h4>
-                                                                            {models.map((u,i) => (
-                                                                                <div key={i} className="p-2 ml-2 bg-white dark:bg-slate-800 rounded border dark:border-slate-700 flex justify-between group hover:border-blue-500 mb-1">
-                                                                                    <div className="flex-1 cursor-pointer" onClick={() => { setFormData(p => ({...p, upsMake: u.make, upsModel: u.model, upsKva: ''})); setActiveTab('log'); }}>
-                                                                                        <span className="text-xs font-bold">{u.model}</span> <span className="text-[10px] opacity-60 ml-2">{u.acV} AC / {u.dcV} DC</span>
-                                                                                    </div>
-                                                                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100">
-                                                                                        <button onClick={() => navigator.clipboard.writeText(`${u.make} ${u.model}`)} className="p-1 hover:bg-slate-100 rounded"><Copy size={12}/></button>
-                                                                                        <button onClick={(e) => handleEditUpsItem(e, u)} className="p-1 hover:bg-slate-100 rounded"><MoreHorizontal size={12}/></button>
-                                                                                        {u.id && <button onClick={(e) => handleDeleteLibItem(e, u, 'custom_ups_library')} className="p-1 text-red-500 hover:bg-red-50 rounded"><Trash2 size={12}/></button>}
-                                                                                    </div>
-                                                                                </div>
-                                                                            ))}
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    ))
-                                                )}
-                                            </div>
-                                        </Card>
-                                    </div>
-                                )}
-
-                                {activeTab === 'archives' && (
-                                    <div className="space-y-4">
-                                        <Card className="p-4">
-                                            <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
-                                                <div className="flex items-center gap-4">
-                                                    <h3 className="font-bold text-xs uppercase opacity-50 flex items-center"><Archive size={14} className="mr-2"/> Archives</h3>
-                                                    <div className="flex bg-slate-100 dark:bg-slate-800 rounded p-0.5">
-                                                        <button onClick={() => setArchiveSubTab('recycling')} className={`px-3 py-1 text-xs font-bold rounded transition-all ${archiveSubTab === 'recycling' ? 'bg-white shadow text-black' : 'text-slate-400'}`}>Recycle Logs</button>
-                                                        <button onClick={() => setArchiveSubTab('reports')} className={`px-3 py-1 text-xs font-bold rounded transition-all ${archiveSubTab === 'reports' ? 'bg-white shadow text-black' : 'text-slate-400'}`}>Service Reports</button>
-                                                    </div>
-                                                </div>
-                                                <div className="flex gap-2 items-center">
-                                                    {archiveSubTab === 'recycling' && (
-                                                        <div className="flex bg-slate-100 dark:bg-slate-800 rounded p-0.5">
-                                                            <button onClick={() => setArchiveGroupBy('location')} className={`px-2 py-0.5 text-[10px] font-bold rounded ${archiveGroupBy === 'location' ? 'bg-white shadow text-black' : 'text-slate-400'}`}>Source</button>
-                                                            <button onClick={() => setArchiveGroupBy('manufacturer')} className={`px-2 py-0.5 text-[10px] font-bold rounded ${archiveGroupBy === 'manufacturer' ? 'bg-white shadow text-black' : 'text-slate-400'}`}>Mfg</button>
-                                                            <button onClick={() => setArchiveGroupBy('jobName')} className={`px-2 py-0.5 text-[10px] font-bold rounded ${archiveGroupBy === 'jobName' ? 'bg-white shadow text-black' : 'text-slate-400'}`}>Job</button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            
-                                            {archiveSubTab === 'recycling' ? (
-                                                <>
-                                                    <div className="flex gap-2 mb-4">
-                                                        <button onClick={groupArchivedItems} disabled={selectedLogIds.size === 0} className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50">Group Selected</button>
-                                                        <button onClick={batchRestore} disabled={selectedLogIds.size === 0} className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 disabled:opacity-50">Restore</button>
-                                                        <button onClick={batchDelete} disabled={selectedLogIds.size === 0} className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 disabled:opacity-50">Delete</button>
-                                                        <button onClick={() => setPrintMode(true)} disabled={selectedLogIds.size === 0} className="text-xs px-2 py-1 bg-slate-100 text-slate-700 rounded hover:bg-slate-200 disabled:opacity-50">Report</button>
-                                                    </div>
-                                                    {Object.entries(groupedArchive).map(([k,v]) => (
-                                                        <div key={k} className="border dark:border-slate-700 rounded-lg overflow-hidden mb-2">
-                                                            <div className="p-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer" onClick={() => setExpandedFolders(p => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; })}>
-                                                                <div className="flex items-center gap-3">
-                                                                    <button onClick={(e) => { e.stopPropagation(); const ids = v.map(i=>i.id); setSelectedLogIds(p => { const n = new Set(p); const all = ids.every(x=>n.has(x)); ids.forEach(x => all ? n.delete(x) : n.add(x)); return n; }); }}>{v.every(i => selectedLogIds.has(i.id)) ? <CheckSquare size={16} className="text-emerald-500"/> : <Square size={16} className="text-slate-300"/>}</button>
-                                                                    <span className="font-bold text-sm">{k}</span>
-                                                                </div>
-                                                                <span className="text-[10px] opacity-50">{v.length} items</span>
-                                                            </div>
-                                                            {expandedFolders.has(k) && v.map((l, idx) => (
-                                                                <div key={l.id} className={`flex justify-between items-center px-10 py-2 border-t dark:border-slate-800 text-xs ${idx % 2 === 0 ? 'bg-slate-50 dark:bg-slate-900' : 'bg-white dark:bg-slate-800'}`}>
-                                                                    <div className="flex gap-3 items-center"><button onClick={() => setSelectedLogIds(p => { const n = new Set(p); n.has(l.id) ? n.delete(l.id) : n.add(l.id); return n; })}>{selectedLogIds.has(l.id) ? <CheckSquare size={14} className="text-emerald-500"/> : <Square size={14} className="text-slate-300"/>}</button><span><span className="font-bold">{l.manufacturer}</span> {l.batteryModel}</span></div>
-                                                                    <div className="flex gap-3"><span className="font-mono opacity-50">{l.weight} lbs</span><button onClick={() => toggleArchive(l.id, true)} className="text-emerald-500 hover:underline font-bold">Restore</button></div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    ))}
-                                                </>
-                                            ) : (
-                                                <div className="space-y-4">
-                                                    {serviceReports.map(r => (
-                                                        <div key={r.id} className="border dark:border-slate-700 rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                                            <div className="flex justify-between items-center">
-                                                                <div>
-                                                                    <h3 className="font-bold text-lg">{r.customer}</h3>
-                                                                    <p className="text-xs text-slate-500">{r.site} • {r.dateStr}</p>
-                                                                </div>
-                                                                <div className="text-right flex items-center gap-4">
-                                                                    <p className="font-bold text-lg">{r.items.length} Units</p>
-                                                                    <div className="flex gap-2">
-                                                                        <button onClick={() => startPM(r)} className="text-[10px] px-2 py-1 border rounded hover:bg-blue-50 text-blue-600">Start PM</button>
-                                                                        <button onClick={() => openReportForEdit(r)} className="text-[10px] px-2 py-1 border rounded hover:bg-slate-100">Edit</button>
-                                                                        <button onClick={(e) => deleteServiceReport(e, r.id)} className="text-[10px] px-2 py-1 border rounded hover:bg-red-50 text-red-500"><Trash2 size={12}/></button>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="mt-3 pt-3 border-t dark:border-slate-700">
-                                                                <p className="text-[10px] font-bold text-slate-400 mb-2 uppercase">Select Items to Print</p>
-                                                                <div className="flex gap-2 items-center mb-2">
-                                                                    <input type="checkbox" checked={r.items.every(i => selectedReportItemIds.has(i.id))} onChange={() => toggleWholeReportSelection(r)} />
-                                                                    <span className="text-xs font-bold">Select All</span>
-                                                                    <button onClick={() => { setCurrentPrintReport(r); setPrintMode(true); }} className="ml-auto text-xs px-2 py-1 bg-emerald-500 text-white rounded hover:bg-emerald-600">Print Selected</button>
-                                                                </div>
-                                                                <div className="max-h-32 overflow-y-auto">
-                                                                    {r.items.map(item => (
-                                                                        <div key={item.id} className="flex gap-2 text-xs py-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded px-1">
-                                                                            <input type="checkbox" checked={selectedReportItemIds.has(item.id)} onChange={() => toggleReportItemSelection(item.id)} />
-                                                                            <span>{item.building} / {item.room}: {item.batteryModel}</span>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                    {serviceReports.length === 0 && <p className="text-center text-slate-400 py-8 italic">No service reports saved.</p>}
-                                                </div>
-                                            )}
-                                        </Card>
-                                    </div>
-                                )}
-
-                                {activeTab === 'settings' && (
-                                    <Card className="p-8">
-                                        <h2 className="text-xl font-bold mb-6">Configuration</h2>
-                                        <div className="grid md:grid-cols-2 gap-8 mb-8">
-                                            <div className="space-y-4">
-                                                <label className="text-xs font-bold block opacity-60">Company Name</label>
-                                                <input value={appSettings.companyName} onChange={e => setAppSettings({...appSettings, companyName: e.target.value})} className="w-full p-3 rounded-lg border dark:bg-slate-900 dark:border-slate-700" />
-                                                <label className="text-xs font-bold block opacity-60">Logo URL</label>
-                                                <input value={appSettings.logoUrl} onChange={e => setAppSettings({...appSettings, logoUrl: e.target.value})} className="w-full p-3 rounded-lg border dark:bg-slate-900 dark:border-slate-700" />
-                                            </div>
-                                            <div className="space-y-4">
-                                                <div className="flex items-center justify-between p-3 border rounded-lg dark:border-slate-700">
-                                                    <span className="text-sm font-bold">Track Dates (Install/Exp)</span>
-                                                    <button onClick={() => setAppSettings(p => ({...p, showDates: !p.showDates}))} className={`w-10 h-6 rounded-full p-1 transition-colors ${appSettings.showDates ? 'bg-emerald-500' : 'bg-slate-300'}`}><div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform ${appSettings.showDates ? 'translate-x-4' : ''}`}></div></button>
-                                                </div>
-                                                <div className="flex items-center justify-between p-3 border rounded-lg dark:border-slate-700">
-                                                    <span className="text-sm font-bold">Show Logo on Report</span>
-                                                    <button onClick={() => setAppSettings(p => ({...p, reportLogo: !p.reportLogo}))} className={`w-10 h-6 rounded-full p-1 transition-colors ${appSettings.reportLogo ? 'bg-emerald-500' : 'bg-slate-300'}`}><div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform ${appSettings.reportLogo ? 'translate-x-4' : ''}`}></div></button>
-                                                </div>
-                                                <div className="flex items-center justify-between p-3 border rounded-lg dark:border-slate-700">
-                                                    <span className="text-sm font-bold">Invert Logo on Print</span>
-                                                    <button onClick={() => setAppSettings(p => ({...p, invertLogoPrint: !p.invertLogoPrint}))} className={`w-10 h-6 rounded-full p-1 transition-colors ${appSettings.invertLogoPrint ? 'bg-emerald-500' : 'bg-slate-300'}`}><div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform ${appSettings.invertLogoPrint ? 'translate-x-4' : ''}`}></div></button>
-                                                </div>
-                                                <div className="flex items-center justify-between p-3 border rounded-lg dark:border-slate-700">
-                                                    <span className="text-sm font-bold">Show Safety Protocols</span>
-                                                    <button onClick={() => setAppSettings(p => ({...p, showProtocols: !p.showProtocols}))} className={`w-10 h-6 rounded-full p-1 transition-colors ${appSettings.showProtocols ? 'bg-emerald-500' : 'bg-slate-300'}`}><div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform ${appSettings.showProtocols ? 'translate-x-4' : ''}`}></div></button>
-                                                </div>
-                                                <div className="flex items-center justify-between p-3 border rounded-lg dark:border-slate-700">
-                                                    <span className="text-sm font-bold">Report Header: Customer</span>
-                                                    <button onClick={() => setAppSettings(p => ({...p, reportUseCustomerName: !p.reportUseCustomerName}))} className={`w-10 h-6 rounded-full p-1 transition-colors ${appSettings.reportUseCustomerName ? 'bg-emerald-500' : 'bg-slate-300'}`}><div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform ${appSettings.reportUseCustomerName ? 'translate-x-4' : ''}`}></div></button>
-                                                </div>
-                                                <div className="pt-2"><span className="text-xs font-bold opacity-60 block mb-2">Accent Color</span>
-                                                    <div className="flex gap-2">{Object.keys(THEMES).map(c => <button key={c} onClick={() => setAppSettings({...appSettings, themeColor: c})} className={`w-8 h-8 rounded-full border-2 ${c === 'emerald' ? 'bg-emerald-500' : c === 'blue' ? 'bg-blue-500' : c === 'violet' ? 'bg-violet-500' : 'bg-slate-600'} ${appSettings.themeColor === c ? 'border-white ring-2 ring-slate-400' : 'border-transparent'}`} />)}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <button onClick={saveSettings} className={`px-8 py-3 rounded-xl font-bold text-white shadow-lg transition-transform hover:scale-105 ${theme.primary}`}>Save All Changes</button>
-                                        
-                                        <div className="mt-8 pt-6 border-t dark:border-slate-700">
-                                            <h3 className="font-bold text-red-500 text-sm uppercase mb-4 flex items-center"><AlertTriangle className="mr-2" size={16}/> Danger Zone</h3>
-                                            <div className="flex gap-4">
-                                                <button onClick={clearRecycleLogs} className="px-4 py-2 border border-red-500 text-red-500 rounded text-xs font-bold hover:bg-red-50 dark:hover:bg-red-900/20">Clear Recycling Logs</button>
-                                                <button onClick={clearServiceReports} className="px-4 py-2 border border-red-500 text-red-500 rounded text-xs font-bold hover:bg-red-50 dark:hover:bg-red-900/20">Clear Service Reports</button>
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-12 pt-8 border-t dark:border-slate-700 text-center">
-                                            <p className="font-bold text-slate-500 text-xs uppercase tracking-wider mb-2">About</p>
-                                            <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">CTRL Inc.</h3>
-                                            <p className="text-xs text-slate-400">Battery Recycling Management System v1.12.0</p>
-                                            
-                                            <div className="mt-6 flex justify-center gap-8">
-                                                <div className="text-center">
-                                                    <p className="text-2xl font-bold text-emerald-500">{Math.round(allTimeStats.weight).toLocaleString()}</p>
-                                                    <p className="text-[10px] uppercase font-bold text-slate-400">All-Time Lbs</p>
-                                                </div>
-                                                <div className="text-center">
-                                                    <p className="text-2xl font-bold text-blue-500">{allTimeStats.count.toLocaleString()}</p>
-                                                    <p className="text-[10px] uppercase font-bold text-slate-400">All-Time Units</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Card>
-                                )}
-                            </div>
-
-                            {/* RIGHT SIDEBAR */}
-                            <div className="space-y-6">
-                                {appSettings.showProtocols && (
-                                    <Card className="p-6 bg-slate-900 text-slate-100 border-none relative overflow-hidden group">
-                                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><AlertTriangle size={80}/></div>
-                                        <h3 className="font-bold mb-4 flex items-center border-b border-slate-700 pb-3"><ShieldCheck className="mr-2 text-emerald-400" size={18}/> Safety Protocols</h3>
-                                        <ul className="text-xs space-y-3 font-medium opacity-90 relative z-10">
-                                            <li className="flex gap-3 items-start"><Box size={14} className="mt-0.5 shrink-0 text-slate-400"/><span><strong>Wet Cells:</strong> Keep upright. High acid risk.</span></li>
-                                            <li className="flex gap-3 items-start"><Scale size={14} className="mt-0.5 shrink-0 text-slate-400"/><span><strong>Heavy Loads:</strong> Team lift &gt;50lbs.</span></li>
-                                            <li className="flex gap-3 items-start"><Zap size={14} className="mt-0.5 shrink-0 text-slate-400"/><span><strong>Lithium:</strong> Tape terminals. Fire risk.</span></li>
-                                        </ul>
-                                    </Card>
-                                )}
-                            </div>
-
-                        </div>
-                    </div>
-                    
-                    {/* Mobile Bottom Nav */}
-                    <div className="md:hidden fixed bottom-0 w-full bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-2 flex justify-around z-50">
-                        {['dashboard', 'log', 'database', 'archives', 'settings'].map(t => (
-                            <button key={t} onClick={() => setActiveTab(t)} className={`p-2 rounded-xl flex flex-col items-center ${activeTab === t ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
-                                {t==='dashboard' && <BarChart3 size={20}/>}
-                                {t==='log' && <Plus size={20}/>}
-                                {t==='database' && <Database size={20}/>}
-                                {t==='archives' && <Archive size={20}/>}
-                                {t==='settings' && <Settings size={20}/>}
-                                <span className="text-[10px] font-bold capitalize mt-1">{t}</span>
+            <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">{isDarkMode ? <Sun /> : <Moon />}</button>
+          </div>
+        </header>
+
+        <main className="max-w-6xl mx-auto p-4 md:p-8">
+          <nav className="flex flex-wrap gap-2 mb-8">
+            <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-lg font-bold flex items-center ${activeTab === 'dashboard' ? `${theme.primary} text-white` : 'bg-white dark:bg-slate-800 border'}`}><BarChart3 className="mr-2" /> Overview</button>
+            <button onClick={() => setActiveTab('log')} className={`px-4 py-2 rounded-lg font-bold flex items-center ${activeTab === 'log' ? `${theme.primary} text-white` : 'bg-white dark:bg-slate-800 border'}`}><Plus className="mr-2" /> New Entry</button>
+            <button onClick={() => setActiveTab('database')} className={`px-4 py-2 rounded-lg font-bold flex items-center ${activeTab === 'database' ? `${theme.primary} text-white` : 'bg-white dark:bg-slate-800 border'}`}><Database className="mr-2" /> Database</button>
+            <button onClick={() => setActiveTab('settings')} className={`px-4 py-2 rounded-lg font-bold flex items-center ${activeTab === 'settings' ? `${theme.primary} text-white` : 'bg-white dark:bg-slate-800 border'}`}><Settings className="mr-2" /> Settings</button>
+          </nav>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              
+              {activeTab === 'dashboard' && (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <Card className={`p-4 border-l-4 ${theme.border}`}><p className="text-[10px] font-bold text-slate-500 uppercase">Weight Total</p><h3 className="text-xl font-bold">{manifestAnalysis.weight.toLocaleString()} lbs</h3></Card>
+                    <Card className="p-4 border-l-4 border-l-slate-400"><p className="text-[10px] font-bold text-slate-500 uppercase">Unit Total</p><h3 className="text-xl font-bold">{manifestAnalysis.count}</h3></Card>
+                    <Card className="p-4 border-l-4 border-l-red-500"><p className="text-[10px] font-bold text-slate-500 uppercase">Expired</p><h3 className="text-xl font-bold text-red-500">{manifestAnalysis.expired}</h3></Card>
+                    <Card className="p-4 border-l-4 border-l-amber-500"><p className="text-[10px] font-bold text-slate-500 uppercase">Expiring 60d</p><h3 className="text-xl font-bold text-amber-500">{manifestAnalysis.expiringSoon}</h3></Card>
+                  </div>
+                  <Card className="overflow-hidden">
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b dark:border-slate-700 flex justify-between items-center"><span className="text-xs font-bold uppercase text-slate-500">Active Records</span><button onClick={() => setPrintMode(true)} className="bg-white dark:bg-slate-700 px-3 py-1 rounded border text-[10px]"><Printer className="w-3 h-3 inline mr-1" /> Report</button></div>
+                    <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50 dark:bg-slate-900 text-xs font-bold uppercase"><tr><th className="p-4">Status</th><th>Source / Model</th><th className="text-right">Qty</th><th className="text-right">Lbs</th><th className="p-4 text-center">Action</th></tr></thead><tbody className="divide-y dark:divide-slate-700">
+                      {activeLogs.length === 0 ? <tr><td colSpan="5" className="p-8 text-center text-slate-400 italic">No records yet.</td></tr> : activeLogs.map(l => (
+                        <tr key={l.id} className="hover:bg-slate-50 dark:hover:bg-slate-800">
+                          <td className="p-4"><StatusIcon status={getExpiryStatus(l.expiryDate)} /></td>
+                          <td className="p-4"><div className="font-bold">{String(l.location)}</div><div className="text-xs opacity-50">{String(l.batteryModel)}</div></td>
+                          <td className="p-4 text-right">{Number(l.count)}</td>
+                          <td className="p-4 text-right font-mono font-bold">{Number(l.weight)}</td>
+                          <td className="p-4 text-center space-x-2"><button onClick={() => startEdit(l)} className="hover:text-emerald-500 transition-colors"><Edit2 size={16} /></button><button onClick={() => toggleArchive(l.id, false)} className="hover:text-amber-500 transition-colors"><Archive size={16} /></button></td>
+                        </tr>
+                      ))}
+                    </tbody></table></div>
+                  </Card>
+                </>
+              )}
+
+              {activeTab === 'log' && (
+                <Card className="p-8">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-bold">{editingId ? 'Edit Manifest' : (editingLibId ? 'Edit Library Item' : 'New Entry')}</h2>
+                    <label className={`flex items-center px-4 py-2 rounded-lg cursor-pointer ${scanning ? 'opacity-50' : `${theme.primary} text-white shadow-md hover:opacity-90`}`}>
+                      {scanning ? <Loader2 className="animate-spin mr-2" size={18} /> : <Camera className="mr-2" size={18} />} 
+                      {scanning ? 'Analyzing...' : 'Scan / Upload Label'}
+                      <input type="file" className="hidden" accept="image/*" onChange={handleScanLabel} disabled={scanning} />
+                    </label>
+                  </div>
+                  
+                  {scanning && <div className="mb-4 p-3 bg-blue-50 text-blue-700 rounded-lg text-center animate-pulse text-sm">Analyzing image for battery specs...</div>}
+
+                  <form onSubmit={saveRecord} className="space-y-6">
+                    <div className="relative">
+                      <label className="text-xs font-bold block mb-1">Battery Model</label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <input name="batteryModel" value={formData.batteryModel} onChange={handleInputChange} autoComplete="off" className="w-full p-3 rounded border dark:bg-slate-700 outline-none" placeholder="Start typing (e.g. 12HX300)..." />
+                          {suggestions.length > 0 && <div className="absolute z-50 w-full bg-white dark:bg-slate-800 border mt-1 shadow-xl max-h-48 overflow-y-auto">{suggestions.map((s, i) => (
+                            <button key={i} type="button" onClick={() => selectBattery(s)} className="w-full text-left p-3 border-b hover:bg-slate-50 dark:hover:bg-slate-700">
+                              <div className="font-bold text-slate-800 dark:text-slate-100">{s.manufacturer} {String(s.model)}</div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">{Number(s.weight)} lbs • {String(s.type)}</div>
                             </button>
-                        ))}
+                          ))}</div>}
+                        </div>
+                        <button type="button" onClick={handleModelSearch} disabled={searchingModel || !formData.batteryModel} className="p-3 bg-white dark:bg-slate-700 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors" title="Auto-fill specs from web">
+                          {searchingModel ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} className="text-amber-500" />}
+                        </button>
+                      </div>
                     </div>
-                </div>
-            );
-        }
+                    <div className="grid grid-cols-2 gap-4">
+                      <div><label className="text-xs font-bold block mb-1">Source / Customer</label><input name="location" list="slist" value={formData.location} onChange={handleInputChange} className="w-full p-3 rounded border dark:bg-slate-700" /><datalist id="slist">{savedSources.map(s => <option key={s} value={String(s)} />)}</datalist></div>
+                      <div><label className="text-xs font-bold block mb-1">Manufacturer</label><input name="manufacturer" value={formData.manufacturer} onChange={handleInputChange} className="w-full p-3 rounded border dark:bg-slate-700" /></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                       <div><label className="text-xs font-bold block mb-1">Type</label><select name="type" value={formData.type} onChange={handleInputChange} className="w-full p-3 rounded border dark:bg-slate-700"><option value="Lead-Acid">Lead-Acid</option><option value="Wet Cell">Wet Cell</option><option value="Li-ion">Li-ion</option></select></div>
+                       <div><label className="text-xs font-bold block mb-1">Expected Life</label><input name="expectedLife" value={formData.expectedLife} onChange={handleInputChange} className="w-full p-3 rounded border dark:bg-slate-700" /></div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 bg-slate-50 dark:bg-slate-800 p-4 rounded border dark:border-slate-700">
+                      <div><label className="text-[10px] font-bold uppercase opacity-50">Unit Lbs</label><input type="number" step="0.1" name="unitWeight" value={formData.unitWeight} onChange={handleInputChange} className="w-full p-2 rounded border dark:bg-slate-700" /></div>
+                      <div><label className="text-[10px] font-bold uppercase opacity-50">Count</label><input type="number" name="count" value={formData.count} onChange={handleInputChange} className="w-full p-2 rounded border dark:bg-slate-700" /></div>
+                      <div><label className="text-[10px] font-bold uppercase opacity-50">Total</label><input readOnly value={String(formData.totalWeight)} className="w-full p-2 rounded border bg-white dark:bg-slate-900 opacity-60 font-bold" /></div>
+                    </div>
+                    <button type="submit" className={`w-full py-4 text-white font-bold rounded-xl ${theme.primary} shadow-lg transition-transform active:scale-95`}>{editingId || editingLibId ? 'Update & Save' : 'Submit Manifest'}</button>
+                  </form>
+                </Card>
+              )}
 
-        const root = createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+              {activeTab === 'database' && (
+                <div className="space-y-6">
+                  <div className="flex gap-2 bg-white dark:bg-slate-800 p-1 rounded-lg border w-fit shadow-sm">
+                    <button onClick={() => setDbSubTab('explorer')} className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${dbSubTab === 'explorer' ? `${theme.primary} text-white` : 'hover:bg-slate-50 dark:hover:bg-slate-700'}`}>Explorer</button>
+                    <button onClick={() => setDbSubTab('library')} className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${dbSubTab === 'library' ? `${theme.primary} text-white` : 'hover:bg-slate-50 dark:hover:bg-slate-700'}`}>Spec Library</button>
+                  </div>
+                  
+                  {dbSubTab === 'explorer' ? (
+                    <Card>
+                      <div className="p-4 border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center"><h3 className="text-sm font-bold uppercase opacity-50">Manifest Hierarchy</h3><input type="text" placeholder="Search..." className="p-1 px-3 border rounded text-xs dark:bg-slate-700" value={dbSearch} onChange={e => setDbSearch(e.target.value)} /></div>
+                      <div className="p-4 space-y-2 max-h-[600px] overflow-y-auto">
+                        {Object.keys(groupedLogs).length === 0 ? <p className="text-center py-12 text-slate-400 italic">No matching records.</p> : 
+                          Object.entries(groupedLogs).sort().map(([loc, items]) => (
+                            <div key={loc} className="border dark:border-slate-700 rounded overflow-hidden">
+                              <button onClick={() => { setExpandedFolders(p => { const n = new Set(p); if (n.has(loc)) n.delete(loc); else n.add(loc); return n; }) }} className="w-full p-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                <div className="flex items-center space-x-3">{expandedFolders.has(loc) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}<Folder size={18} className="text-amber-500 opacity-60" /><span className="font-bold">{String(loc)}</span></div>
+                                <span className="text-[10px] opacity-50">{items.length} records</span>
+                              </button>
+                              {expandedFolders.has(loc) && <div className="bg-slate-50/30 dark:bg-slate-900/20 p-2 pl-10 space-y-1">{items.map(l => (<div key={l.id} className="flex justify-between items-center py-1.5 border-b last:border-0 border-slate-100 dark:border-slate-800"><div className="flex items-center space-x-2"><FileText size={14} className="opacity-30" /><span className="text-sm">{String(l.batteryModel)}</span></div><StatusIcon status={getExpiryStatus(l.expiryDate)} /></div>))}</div>}
+                            </div>
+                          ))}
+                      </div>
+                    </Card>
+                  ) : (
+                    <Card className="p-6">
+                      <div className="flex justify-between items-center mb-6">
+                         <h3 className="font-bold flex items-center"><Library className="mr-2" /> Manufacturer Spec Library</h3>
+                         <input type="text" placeholder="Search library..." className="p-1 px-3 border rounded text-xs dark:bg-slate-700" value={dbSearch} onChange={e => setDbSearch(e.target.value)} />
+                      </div>
+                      <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                        {Object.entries(groupedLibrary).sort().map(([manuf, items]) => (
+                          <div key={manuf} className="border dark:border-slate-700 rounded overflow-hidden">
+                             <button onClick={() => setExpandedLibFolders(p => { const n = new Set(p); n.has(manuf) ? n.delete(manuf) : n.add(manuf); return n; })} className="w-full p-3 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800">
+                                <div className="flex items-center space-x-2"><span className="font-bold text-sm">{manuf}</span></div>
+                                <span className="text-[10px] opacity-50">{items.length} models</span>
+                             </button>
+                             {expandedLibFolders.has(manuf) && (
+                               <div className="p-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                 {items.map((item, idx) => (
+                                   <div key={idx} onClick={() => startEditLibrary(item)} className="p-2 border rounded cursor-pointer hover:border-emerald-500 transition-colors bg-white dark:bg-slate-900 group">
+                                      <div className="flex justify-between items-start">
+                                        <p className="font-bold text-xs">{item.model}</p>
+                                        <PenTool size={12} className="opacity-0 group-hover:opacity-100 text-slate-400" />
+                                      </div>
+                                      <p className="text-[10px] opacity-60">{item.weight} lbs • {item.type}</p>
+                                   </div>
+                                 ))}
+                               </div>
+                             )}
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'settings' && (
+                <Card className="p-8 space-y-8">
+                  <h2 className="text-xl font-bold">Settings</h2>
+                  <div className="grid grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                      <label className="text-sm font-bold block">Company Name</label><input value={appSettings.companyName} onChange={e => setAppSettings({...appSettings, companyName: e.target.value})} className="w-full p-2 rounded border dark:bg-slate-700" />
+                      <label className="text-sm font-bold block">Logo URL</label><input value={appSettings.logoUrl} onChange={e => setAppSettings({...appSettings, logoUrl: e.target.value})} className="w-full p-2 rounded border dark:bg-slate-700" />
+                    </div>
+                    <div className="space-y-4">
+                      <p className="text-sm font-bold mb-2">Interface Accent</p>
+                      <div className="flex flex-wrap gap-2">{Object.keys(THEMES).map(c => <button key={c} onClick={() => setAppSettings({...appSettings, themeColor: c})} className={`w-8 h-8 rounded-full border-2 ${c === 'emerald' ? 'bg-emerald-500' : c === 'blue' ? 'bg-blue-500' : 'bg-slate-600'} ${appSettings.themeColor === c ? 'border-white ring-2 ring-slate-800 dark:ring-white shadow-lg' : 'border-transparent'}`} />)}</div>
+                    </div>
+                  </div>
+                  <button onClick={saveSettings} className={`${theme.primary} text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-transform hover:scale-105`}>Apply Settings</button>
+                </Card>
+              )}
+            </div>
+
+            <aside className="space-y-6">
+              <Card className="p-6 bg-slate-800 text-slate-300 border-none shadow-xl">
+                <h3 className="text-white font-bold mb-4 flex items-center border-b border-slate-700 pb-2"><AlertCircle className="mr-2 text-amber-400" size={18} /> Safety Check</h3>
+                <ul className="text-[11px] space-y-4 font-medium opacity-90">
+                  <li className="flex gap-2"><Box size={14} className="shrink-0 text-slate-500" /> <span><strong>Wet Cells:</strong> Heavy acid risk. Must remain vertical.</span></li>
+                  <li className="flex gap-2"><Scale size={14} className="shrink-0 text-slate-500" /> <span><strong>UPS Blocks:</strong> 60-100 lbs. Team lift required.</span></li>
+                  <li className="flex gap-2"><Zap size={14} className="shrink-0 text-slate-500" /> <span><strong>Li-ion:</strong> Tape terminals to prevent arc-flash.</span></li>
+                </ul>
+              </Card>
+              <Card className="p-6">
+                <h3 className="font-bold mb-2">Inventory Sync</h3>
+                <p className="text-[10px] opacity-50 mb-4">Live inventory tracking summary.</p>
+                <button onClick={() => { navigator.clipboard.writeText(`${appSettings.companyName}\nTotal Weight: ${manifestAnalysis.weight} lbs`); alert('Summary copied!'); }} className={`w-full py-2.5 border rounded-lg font-bold text-xs ${theme.text} hover:bg-slate-50`}>Copy Quick Summary</button>
+              </Card>
+            </aside>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
