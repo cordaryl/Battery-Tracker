@@ -71,7 +71,7 @@
             Download, Upload, Camera, Loader2, SearchCode, ChevronRight, ChevronDown, Folder, 
             FileText, Library, AlertTriangle, ShieldCheck, FlipHorizontal, Image as ImageIcon,
             PenTool, Sparkles, Filter, ToggleLeft, ToggleRight, Layers, MoreHorizontal, Info, Briefcase,
-            ArrowUpDown, ClipboardList, MapPin, Server, Copy, CalendarDays, AlertOctagon
+            ArrowUpDown, ClipboardList, MapPin, Server, Copy, CalendarDays, AlertOctagon, Wifi, WifiOff
         } from 'lucide-react';
         
         import { initializeApp } from 'firebase/app';
@@ -202,6 +202,7 @@
         function App() {
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
+            const [isOnline, setIsOnline] = useState(navigator.onLine);
             const [activeTab, setActiveTab] = useState('dashboard');
             const [dbSubTab, setDbSubTab] = useState('batteries');
             const [archiveSubTab, setArchiveSubTab] = useState('recycling');
@@ -347,8 +348,30 @@
                 if (isDarkMode) { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); } 
                 else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); }
             }, [isDarkMode]);
+            
+            useEffect(() => {
+                window.addEventListener('online', () => setIsOnline(true));
+                window.addEventListener('offline', () => setIsOnline(false));
+                return () => { window.removeEventListener('online', () => setIsOnline(true)); window.removeEventListener('offline', () => setIsOnline(false)); };
+            }, []);
 
             useEffect(() => { signInAnonymously(auth); return onAuthStateChanged(auth, setUser); }, []);
+            
+            // LOAD PERSISTED DRAFT FORM DATA
+            useEffect(() => {
+                const draftForm = localStorage.getItem('draft_form_data');
+                if (draftForm) { try { setFormData(JSON.parse(draftForm)); } catch(e){} }
+                
+                const draftReport = localStorage.getItem('draft_report_v1');
+                if (draftReport) { try { setCurrentReport(JSON.parse(draftReport)); } catch(e) {} }
+            }, []);
+
+            // SAVE PERSISTED DRAFTS
+            useEffect(() => { localStorage.setItem('draft_form_data', JSON.stringify(formData)); }, [formData]);
+            useEffect(() => {
+                if (currentReport) localStorage.setItem('draft_report_v1', JSON.stringify(currentReport));
+                else localStorage.removeItem('draft_report_v1');
+            }, [currentReport]);
 
             useEffect(() => {
                 if (!user) return;
@@ -432,8 +455,11 @@
                         }
 
                         if(editingId) {
-                            try { await updateDoc(doc(db, 'recycling_logs', editingId), payload); } 
-                            catch (err) { await setDoc(doc(db, 'recycling_logs', editingId), {...payload, createdAt: serverTimestamp()}); }
+                            try {
+                                await updateDoc(doc(db, 'recycling_logs', editingId), payload);
+                            } catch (err) {
+                                await setDoc(doc(db, 'recycling_logs', editingId), {...payload, createdAt: serverTimestamp()});
+                            }
                         }
                         else await addDoc(collection(db, 'recycling_logs'), {...payload, createdAt: serverTimestamp()});
                         
@@ -694,7 +720,6 @@
                     subHeader = `${printDisplayOptions.source ? (currentPrintReport.site || '') + ' - ' : ''}${currentPrintReport.dateStr}`;
                     isServiceReport = true;
                 } else if (activeTab === 'archives' && archiveSubTab === 'reports') {
-                    // Collect items from multiple selected reports
                     const allServiceItems = serviceReports.flatMap(r => r.items.map(i => ({...i, reportId: r.id, reportCustomer: r.customer, reportSite: r.site})));
                     itemsToPrint = allServiceItems.filter(i => selectedReportItemIds.has(i.id));
                     isServiceReport = true;
@@ -741,7 +766,7 @@
                         <div className="no-print mb-8 bg-slate-100 p-4 rounded border">
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="font-bold">Report Configuration</h2>
-                                <div className="flex gap-2"><button onClick={()=>window.print()} type="button" className={`px-4 py-2 text-white rounded ${theme.primary}`}>Print</button><button type="button" onClick={()=>{setPrintMode(false); setCurrentPrintReport(null); setSelectedReportItemIds(new Set());}} className="px-4 py-2 border rounded bg-white text-black">Close</button></div>
+                                <div className="flex gap-2"><button type="button" onClick={()=>window.print()} className={`px-4 py-2 text-white rounded ${theme.primary}`}>Print</button><button type="button" onClick={()=>{setPrintMode(false); setCurrentPrintReport(null); setSelectedReportItemIds(new Set());}} className="px-4 py-2 border rounded bg-white text-black">Close</button></div>
                             </div>
                             
                             <div className="mt-4 pt-4 border-t text-xs">
@@ -753,7 +778,6 @@
                                     <label className="flex items-center"><input type="checkbox" checked={printDisplayOptions.equipment} onChange={e=>setPrintDisplayOptions({...printDisplayOptions, equipment: e.target.checked})} className="mr-2"/> Equipment / UPS</label>
                                 </div>
                             </div>
-
                             {isServiceReport && (
                                 <div className="grid grid-cols-3 gap-4 text-xs mt-4 pt-4 border-t">
                                     <div><p className="font-bold mb-1">Filter Sites</p>{[...new Set(itemsToPrint.map(i => i.site).filter(Boolean))].map(s => <label key={s} className="flex items-center"><input type="checkbox" checked={!printFilters.sites.has(s)} onChange={()=>togglePrintFilter('sites', s)} className="mr-2"/>{s}</label>)}</div>
@@ -821,10 +845,11 @@
                 <div className={`${appSettings.fontStyle} text-sm md:text-base flex flex-col h-screen`}>
                     <div className={`z-50 sticky top-0 w-full p-3 md:px-6 flex justify-between items-center bg-slate-900 text-white shadow-md`}>
                         <div className="flex items-center space-x-3">
+                            <span className={`w-3 h-3 rounded-full mr-2 ${isOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-slate-500'}`} title={isOnline ? "Online & Syncing" : "Offline Mode"}></span>
                             {appSettings.logoUrl ? <img src={appSettings.logoUrl} className="h-8 md:h-10 object-contain" /> : <div className={`p-2 rounded-lg ${theme.primary} text-white`}><Battery size={20}/></div>}
                             <h1 className="text-lg md:text-xl font-bold tracking-tight">{String(appSettings.companyName)}</h1>
                         </div>
-                        <nav className="hidden md:flex gap-1">{['dashboard', 'log', 'database', 'archives', 'settings'].map(t => (<button type="button" key={t} onClick={() => setActiveTab(t)} className={`px-4 py-2 rounded-lg font-bold capitalize transition-all ${activeTab === t ? `${theme.primary} text-white shadow-md` : 'hover:bg-slate-800'}`}>{t}</button>))}</nav>
+                        <nav className="hidden md:flex gap-1">{['dashboard', 'log', 'database', 'archives', 'settings'].map(t => (<button key={t} type="button" onClick={() => setActiveTab(t)} className={`px-4 py-2 rounded-lg font-bold capitalize transition-all ${activeTab === t ? `${theme.primary} text-white shadow-md` : 'hover:bg-slate-800'}`}>{t}</button>))}</nav>
                         <button type="button" onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-full hover:bg-slate-800 transition-colors">{isDarkMode ? <Sun size={20} className="text-amber-400" /> : <Moon size={20} className="text-slate-400" />}</button>
                     </div>
 
@@ -897,6 +922,7 @@
                                                             <div><h3 className="font-bold text-blue-700 dark:text-blue-300">{currentReport.customer}</h3><p className="text-xs opacity-70">{currentReport.site}</p></div>
                                                             <div className="flex gap-2">
                                                                 <button type="button" onClick={() => { setReportSubTab('history'); }} className="px-3 py-1.5 border hover:bg-slate-100 rounded text-xs">History / Logs</button>
+                                                                <button type="button" onClick={() => { if(confirm("Discard current draft?")) { setCurrentReport(null); localStorage.removeItem('draft_report_v1'); } }} className="px-3 py-1.5 border border-red-200 text-red-500 hover:bg-red-50 rounded text-xs">Discard Draft</button>
                                                                 <button type="button" onClick={saveReportToDb} className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded shadow hover:bg-blue-700">Save Report</button>
                                                             </div>
                                                         </div>
@@ -1152,7 +1178,7 @@
                                                                     <div className="flex gap-2">
                                                                         <button type="button" onClick={() => startPM(r)} className="text-[10px] px-2 py-1 border rounded hover:bg-blue-50 text-blue-600">Start PM</button>
                                                                         <button type="button" onClick={() => openReportForEdit(r)} className="text-[10px] px-2 py-1 border rounded hover:bg-slate-100">Edit</button>
-                                                                        <button type="button" onClick={(e) => deleteServiceReport(e, r.id)} className="text-[10px] px-2 py-1 border rounded hover:bg-red-50 text-red-500"><Trash2 size={12}/></button>
+                                                                        <button type="button" onClick={(e) => deleteServiceReport(e, r.id)} className="text-[10px] px-2 py-1 border rounded hover:bg-red-50 text-red-500 cursor-pointer z-50"><Trash2 size={12}/></button>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1231,7 +1257,7 @@
                                         <div className="mt-12 pt-8 border-t dark:border-slate-700 text-center">
                                             <p className="font-bold text-slate-500 text-xs uppercase tracking-wider mb-2">About</p>
                                             <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">CTRL Inc.</h3>
-                                            <p className="text-xs text-slate-400">Battery Recycling Management System v1.13.4</p>
+                                            <p className="text-xs text-slate-400">Battery Recycling Management System v1.14.1</p>
                                             
                                             <div className="mt-6 flex justify-center gap-8">
                                                 <div className="text-center">
