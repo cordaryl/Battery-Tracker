@@ -1,10 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BatteryCycle Track</title>
-    
+
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="BatteryRecycle.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" href="BatteryRecyclecool.png">
+    <meta name="theme-color" content="#10b981">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="BatteryCycle">
+    <meta name="mobile-web-app-capable" content="yes">
+
     <!-- 1. Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -19,9 +30,9 @@
             }
         }
     </script>
-    
+
     <!-- 2. Babel -->
-    <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.26.0/babel.min.js"></script>
 
     <!-- 3. Import Map -->
     <script type="importmap">
@@ -38,42 +49,101 @@
     </script>
 
     <style>
-        html { -webkit-tap-highlight-color: transparent; }
-        body { padding-bottom: env(safe-area-inset-bottom); }
-        
+        html {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
         @media print {
-            @page { margin: 0.5cm; }
-            body { background: white !important; color: black !important; }
-            .no-print { display: none !important; }
-            .print-view { display: block !important; }
+            @page {
+                margin: 0.5cm;
+            }
+
+            body {
+                background: white !important;
+                color: black !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .print-view {
+                display: block !important;
+            }
+
             /* Boxed table for print */
-            table.print-bordered { border-collapse: collapse; width: 100%; border: 1px solid #000; }
-            table.print-bordered th, table.print-bordered td { border: 1px solid #000; padding: 6px; }
-            table.print-bordered th { background-color: #f3f4f6 !important; font-weight: bold; }
-            tr.zebra-row-odd { background-color: #f9fafb !important; -webkit-print-color-adjust: exact; }
-            tr.zebra-row-even { background-color: #ffffff !important; -webkit-print-color-adjust: exact; }
-            .group-header { background-color: #e5e7eb !important; font-weight: bold; -webkit-print-color-adjust: exact; border: 1px solid #000; display: flex; justify-content: space-between; align-items: center; }
-            .ups-header { font-weight: bold; margin-top: 10px; margin-bottom: 5px; }
-            .print-color-exact { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            table.print-bordered {
+                border-collapse: collapse;
+                width: 100%;
+                border: 1px solid #000;
+            }
+
+            table.print-bordered th,
+            table.print-bordered td {
+                border: 1px solid #000;
+                padding: 6px;
+            }
+
+            table.print-bordered th {
+                background-color: #f3f4f6 !important;
+                font-weight: bold;
+            }
+
+            tr.zebra-row-odd {
+                background-color: #f9fafb !important;
+                -webkit-print-color-adjust: exact;
+            }
+
+            tr.zebra-row-even {
+                background-color: #ffffff !important;
+                -webkit-print-color-adjust: exact;
+            }
+
+            .group-header {
+                background-color: #e5e7eb !important;
+                font-weight: bold;
+                -webkit-print-color-adjust: exact;
+                border: 1px solid #000;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .ups-header {
+                font-weight: bold;
+                margin-top: 10px;
+                margin-bottom: 5px;
+            }
+
+            .print-color-exact {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
         }
     </style>
 </head>
-<body class="bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-800 dark:text-slate-100 transition-colors duration-300 flex flex-col">
+
+<body
+    class="bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-800 dark:text-slate-100 transition-colors duration-300 flex flex-col">
     <div id="root" class="flex-1 flex flex-col"></div>
 
-    <script type="text/babel" data-type="module">
+    <script type="text/babel" data-type="module" data-presets="react">
         import React, { useState, useEffect, useMemo, useRef } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { 
-            Battery, Recycle, Plus, Trash2, BarChart3, Leaf, History, AlertCircle, Save, Scale, 
-            Settings, Search, Building, Zap, Clock, Moon, Sun, Edit2, X, Printer, CheckSquare, 
-            Square, Palette, Type, Calendar, Archive, RefreshCcw, Layout, Box, Database, 
-            Download, Upload, Camera, Loader2, SearchCode, ChevronRight, ChevronDown, Folder, 
+        import {
+            Battery, Recycle, Plus, Trash2, BarChart3, Leaf, History, AlertCircle, Save, Scale,
+            Settings, Search, Building, Zap, Clock, Moon, Sun, Edit2, X, Printer, CheckSquare,
+            Square, Palette, Type, Calendar, Archive, RefreshCcw, Layout, Box, Database,
+            Download, Upload, Camera, Loader2, SearchCode, ChevronRight, ChevronDown, Folder,
             FileText, Library, AlertTriangle, ShieldCheck, FlipHorizontal, Image as ImageIcon,
             PenTool, Sparkles, Filter, ToggleLeft, ToggleRight, Layers, MoreHorizontal, Info, Briefcase,
             ArrowUpDown, ClipboardList, MapPin, Server, Copy, CalendarDays, AlertOctagon, Wifi, WifiOff
         } from 'lucide-react';
-        
+
         import { initializeApp } from 'firebase/app';
         import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
         import { getFirestore, collection, addDoc, deleteDoc, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp, enableIndexedDbPersistence, writeBatch, getDocs, query, where } from 'firebase/firestore';
@@ -88,14 +158,14 @@
             appId: "1:622740135754:web:05b76f79e7d1c2adeaabb3",
             measurementId: "G-7DGFYQ72S1"
         };
-        const GEMINI_API_KEY = ""; 
+        const GEMINI_API_KEY = "";
 
         // --- INITIALIZE FIREBASE ---
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        
-        try { enableIndexedDbPersistence(db).catch(() => {}); } catch (e) {}
+
+        try { enableIndexedDbPersistence(db).catch(() => { }); } catch (e) { }
 
         // --- DATA: BATTERIES ---
         const INITIAL_BATTERY_DB = [
@@ -180,8 +250,8 @@
         const TypeBadge = ({ type }) => {
             const t = String(type || 'Other');
             let colorClass = 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
-            if(t.includes('Li-ion')) colorClass = 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300';
-            if(t.includes('Wet')) colorClass = 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300';
+            if (t.includes('Li-ion')) colorClass = 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300';
+            if (t.includes('Wet')) colorClass = 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300';
             return <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${colorClass}`}>{t}</span>;
         };
 
@@ -206,26 +276,26 @@
             const [activeTab, setActiveTab] = useState('dashboard');
             const [dbSubTab, setDbSubTab] = useState('batteries');
             const [archiveSubTab, setArchiveSubTab] = useState('recycling');
-            const [isDarkMode, setIsDarkMode] = useState(() => { try { return localStorage.getItem('theme') === 'dark'; } catch(e) { return false; } });
+            const [isDarkMode, setIsDarkMode] = useState(() => { try { return localStorage.getItem('theme') === 'dark'; } catch (e) { return false; } });
             const [printMode, setPrintMode] = useState(false);
             const [currentPrintReport, setCurrentPrintReport] = useState(null);
             const [scanning, setScanning] = useState(false);
             const [searchingModel, setSearchingModel] = useState(false);
             const [addingLibItem, setAddingLibItem] = useState(false);
             const [addingUpsItem, setAddingUpsItem] = useState(false);
-            const [archiveGroupBy, setArchiveGroupBy] = useState('location'); 
-            
+            const [archiveGroupBy, setArchiveGroupBy] = useState('location');
+
             // Print State
-            const [printGroupBy, setPrintGroupBy] = useState('report'); 
-            const [selectedReportItemIds, setSelectedReportItemIds] = useState(new Set()); 
+            const [printGroupBy, setPrintGroupBy] = useState('report');
+            const [selectedReportItemIds, setSelectedReportItemIds] = useState(new Set());
             const [printFilters, setPrintFilters] = useState({ sites: new Set(), buildings: new Set(), rooms: new Set() });
             const [printDisplayOptions, setPrintDisplayOptions] = useState({ company: true, area: true, equipment: true, source: true });
 
             // Entry Mode
-            const [entryMode, setEntryMode] = useState('recycle'); 
-            const [currentReport, setCurrentReport] = useState(null); 
+            const [entryMode, setEntryMode] = useState('recycle');
+            const [currentReport, setCurrentReport] = useState(null);
             const [editingReportItemIndex, setEditingReportItemIndex] = useState(null);
-            const [reportSubTab, setReportSubTab] = useState('items'); 
+            const [reportSubTab, setReportSubTab] = useState('items');
 
             // Data
             const [logs, setLogs] = useState([]);
@@ -234,7 +304,7 @@
             const [customUpsLibrary, setCustomUpsLibrary] = useState([]);
             const [savedSources, setSavedSources] = useState([]);
             const [savedData, setSavedData] = useState({ customers: [], sites: [], buildings: [], rooms: [] });
-            
+
             // UI
             const [dbSearch, setDbSearch] = useState('');
             const [expandedFolders, setExpandedFolders] = useState(new Set());
@@ -244,14 +314,14 @@
 
             const [newLibData, setNewLibData] = useState({ id: null, manufacturer: '', model: '', type: 'Lead-Acid', weight: '', ah: '', life: '' });
             const [newUpsData, setNewUpsData] = useState({ id: null, make: '', family: '', model: '', type: '', acV: '', dcV: '' });
-            
+
             const [suggestions, setSuggestions] = useState([]);
             const [upsSuggestions, setUpsSuggestions] = useState([]);
             const [appSettings, setAppSettings] = useState({ companyName: 'BatteryCycle Track', logoUrl: '', themeColor: 'emerald', fontStyle: 'font-sans', showProtocols: true, dynamicReports: false, showDates: true, reportLogo: false, invertLogoPrint: false, reportUseCustomerName: false });
-            
+
             const [editingId, setEditingId] = useState(null);
             const [formData, setFormData] = useState({
-                batteryModel: '', manufacturer: '', type: 'Lead-Acid', lithiumType: '', unitWeight: '', totalWeight: '', count: '', 
+                batteryModel: '', manufacturer: '', type: 'Lead-Acid', lithiumType: '', unitWeight: '', totalWeight: '', count: '',
                 ampHours: '', expectedLife: '', dateCode: '', notes: '', location: '', installDate: new Date().toISOString().split('T')[0], expiryDate: '', room: '', building: '', site: '',
                 upsMake: '', upsModel: '', upsSerial: '', upsKva: ''
             });
@@ -261,37 +331,37 @@
             // 2. DERIVED DATA
             const activeLogs = useMemo(() => logs.filter(l => !l.archived), [logs]);
             const archivedLogs = useMemo(() => logs.filter(l => l.archived), [logs]);
-            const allTimeStats = useMemo(() => logs.reduce((acc, l) => ({ weight: acc.weight + Number(l.weight||0), count: acc.count + Number(l.count||0) }), { weight: 0, count: 0 }), [logs]);
+            const allTimeStats = useMemo(() => logs.reduce((acc, l) => ({ weight: acc.weight + Number(l.weight || 0), count: acc.count + Number(l.count || 0) }), { weight: 0, count: 0 }), [logs]);
 
             const fullLibrary = useMemo(() => {
-                const customMap = new Map(customLibrary.map(i => [((i.manufacturer||"").trim() + (i.model||"").trim()).toLowerCase(), i]));
+                const customMap = new Map(customLibrary.map(i => [((i.manufacturer || "").trim() + (i.model || "").trim()).toLowerCase(), i]));
                 const merged = [];
                 INITIAL_BATTERY_DB.forEach(initItem => {
-                    const key = ((initItem.manufacturer||"").trim() + (initItem.model||"").trim()).toLowerCase();
+                    const key = ((initItem.manufacturer || "").trim() + (initItem.model || "").trim()).toLowerCase();
                     if (!customMap.has(key)) merged.push(initItem);
                 });
-                return [...merged, ...customLibrary].sort((a,b) => (a.manufacturer||'').localeCompare(b.manufacturer||''));
+                return [...merged, ...customLibrary].sort((a, b) => (a.manufacturer || '').localeCompare(b.manufacturer || ''));
             }, [customLibrary]);
 
             const fullUpsLibrary = useMemo(() => {
-                const customMap = new Map(customUpsLibrary.map(i => [((i.make||"").trim() + (i.model||"").trim()).toLowerCase(), i]));
+                const customMap = new Map(customUpsLibrary.map(i => [((i.make || "").trim() + (i.model || "").trim()).toLowerCase(), i]));
                 const merged = [];
                 INITIAL_UPS_DB.forEach(initItem => {
-                    const key = ((initItem.make||"").trim() + (initItem.model||"").trim()).toLowerCase();
+                    const key = ((initItem.make || "").trim() + (initItem.model || "").trim()).toLowerCase();
                     if (!customMap.has(key)) merged.push(initItem);
                 });
-                return [...merged, ...customUpsLibrary].sort((a,b) => (a.make||'').localeCompare(b.make||''));
+                return [...merged, ...customUpsLibrary].sort((a, b) => (a.make || '').localeCompare(b.make || ''));
             }, [customUpsLibrary]);
 
             // Grouping Logic
             const getGroupedLogs = (data, groupBy) => {
                 const groups = {};
-                data.filter(l => (l.location||'').toLowerCase().includes(dbSearch.toLowerCase()) || (l.batteryModel||'').toLowerCase().includes(dbSearch.toLowerCase()))
+                data.filter(l => (l.location || '').toLowerCase().includes(dbSearch.toLowerCase()) || (l.batteryModel || '').toLowerCase().includes(dbSearch.toLowerCase()))
                     .forEach(l => {
                         let k = 'Unknown';
                         if (groupBy === 'jobName') k = l.jobName || 'Unassigned Logs';
                         else k = l[groupBy] || 'Unknown';
-                        if(!groups[k]) groups[k] = [];
+                        if (!groups[k]) groups[k] = [];
                         groups[k].push(l);
                     });
                 return groups;
@@ -299,10 +369,10 @@
 
             const getGroupedLibrary = (data) => {
                 const groups = {};
-                data.filter(l => (l.model||'').toLowerCase().includes(dbSearch.toLowerCase()) || (l.manufacturer||'').toLowerCase().includes(dbSearch.toLowerCase()))
+                data.filter(l => (l.model || '').toLowerCase().includes(dbSearch.toLowerCase()) || (l.manufacturer || '').toLowerCase().includes(dbSearch.toLowerCase()))
                     .forEach(l => {
                         const k = l.manufacturer || 'Generic';
-                        if(!groups[k]) groups[k] = [];
+                        if (!groups[k]) groups[k] = [];
                         groups[k].push(l);
                     });
                 return groups;
@@ -311,15 +381,15 @@
             const groupedActive = useMemo(() => getGroupedLogs(activeLogs, 'location'), [activeLogs, dbSearch]);
             const groupedArchive = useMemo(() => getGroupedLogs(archivedLogs, archiveGroupBy), [archivedLogs, dbSearch, archiveGroupBy]);
             const groupedLib = useMemo(() => getGroupedLibrary(fullLibrary), [fullLibrary, dbSearch]);
-            
+
             const groupedUps = useMemo(() => {
                 const s = dbSearch.toLowerCase();
-                const filtered = fullUpsLibrary.filter(u => 
-                    (u.make||'').toLowerCase().includes(s) || 
-                    (u.family||'').toLowerCase().includes(s) || 
-                    (u.model||'').toLowerCase().includes(s)
+                const filtered = fullUpsLibrary.filter(u =>
+                    (u.make || '').toLowerCase().includes(s) ||
+                    (u.family || '').toLowerCase().includes(s) ||
+                    (u.model || '').toLowerCase().includes(s)
                 );
-                
+
                 const groups = {};
                 filtered.forEach(u => {
                     const mk = u.make || 'Generic';
@@ -331,12 +401,12 @@
                 return groups;
             }, [fullUpsLibrary, dbSearch]);
 
-             const groupedReports = useMemo(() => {
-                 const groups = {};
-                serviceReports.filter(r => (r.customer||'').toLowerCase().includes(dbSearch.toLowerCase()) || (r.site||'').toLowerCase().includes(dbSearch.toLowerCase()))
+            const groupedReports = useMemo(() => {
+                const groups = {};
+                serviceReports.filter(r => (r.customer || '').toLowerCase().includes(dbSearch.toLowerCase()) || (r.site || '').toLowerCase().includes(dbSearch.toLowerCase()))
                     .forEach(r => {
                         const k = r.customer || 'Unknown Customer';
-                        if(!groups[k]) groups[k] = [];
+                        if (!groups[k]) groups[k] = [];
                         groups[k].push(r);
                     });
                 return groups;
@@ -345,10 +415,10 @@
 
             // 3. EFFECTS
             useEffect(() => {
-                if (isDarkMode) { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); } 
+                if (isDarkMode) { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); }
                 else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); }
             }, [isDarkMode]);
-            
+
             useEffect(() => {
                 window.addEventListener('online', () => setIsOnline(true));
                 window.addEventListener('offline', () => setIsOnline(false));
@@ -356,14 +426,14 @@
             }, []);
 
             useEffect(() => { signInAnonymously(auth); return onAuthStateChanged(auth, setUser); }, []);
-            
+
             // LOAD PERSISTED DRAFT FORM DATA
             useEffect(() => {
                 const draftForm = localStorage.getItem('draft_form_data');
-                if (draftForm) { try { setFormData(JSON.parse(draftForm)); } catch(e){} }
-                
+                if (draftForm) { try { setFormData(JSON.parse(draftForm)); } catch (e) { } }
+
                 const draftReport = localStorage.getItem('draft_report_v1');
-                if (draftReport) { try { setCurrentReport(JSON.parse(draftReport)); } catch(e) {} }
+                if (draftReport) { try { setCurrentReport(JSON.parse(draftReport)); } catch (e) { } }
             }, []);
 
             // SAVE PERSISTED DRAFTS
@@ -375,25 +445,25 @@
 
             useEffect(() => {
                 if (!user) return;
-                const unsubLogs = onSnapshot(collection(db, 'recycling_logs'), s => setLogs(s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0))), () => setLoading(false));
+                const unsubLogs = onSnapshot(collection(db, 'recycling_logs'), s => setLogs(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))), () => setLoading(false));
                 const unsubReports = onSnapshot(collection(db, 'service_reports'), s => {
-                    const reps = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+                    const reps = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
                     setServiceReports(reps);
                     const customers = new Set(); const sites = new Set(); const buildings = new Set(); const rooms = new Set();
                     reps.forEach(r => {
-                        if(r.customer) customers.add(r.customer);
+                        if (r.customer) customers.add(r.customer);
                         r.items.forEach(i => {
-                            if(i.site) sites.add(i.site);
-                            if(i.building) buildings.add(i.building);
-                            if(i.room) rooms.add(i.room);
+                            if (i.site) sites.add(i.site);
+                            if (i.building) buildings.add(i.building);
+                            if (i.room) rooms.add(i.room);
                         });
                     });
                     setSavedData({ customers: Array.from(customers), sites: Array.from(sites), buildings: Array.from(buildings), rooms: Array.from(rooms) });
                 });
-                const unsubLib = onSnapshot(collection(db, 'custom_library'), s => setCustomLibrary(s.docs.map(d => ({id:d.id, ...d.data()}))));
-                const unsubUpsLib = onSnapshot(collection(db, 'custom_ups_library'), s => setCustomUpsLibrary(s.docs.map(d => ({id:d.id, ...d.data()}))));
+                const unsubLib = onSnapshot(collection(db, 'custom_library'), s => setCustomLibrary(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+                const unsubUpsLib = onSnapshot(collection(db, 'custom_ups_library'), s => setCustomUpsLibrary(s.docs.map(d => ({ id: d.id, ...d.data() }))));
                 const unsubSrc = onSnapshot(collection(db, 'saved_sources'), s => setSavedSources(s.docs.map(d => String(d.data().name))));
-                getDoc(doc(db, 'settings', 'global_config')).then(s => s.exists() && setAppSettings(prev => ({...prev, ...s.data()})));
+                getDoc(doc(db, 'settings', 'global_config')).then(s => s.exists() && setAppSettings(prev => ({ ...prev, ...s.data() })));
                 setLoading(false);
                 return () => { unsubLogs(); unsubReports(); unsubLib(); unsubUpsLib(); unsubSrc(); };
             }, [user]);
@@ -401,17 +471,17 @@
             useEffect(() => {
                 const u = parseFloat(formData.unitWeight) || 0;
                 const c = parseInt(formData.count) || 0;
-                if(u > 0 && c > 0) setFormData(p => ({...p, totalWeight: (u*c).toFixed(1)}));
+                if (u > 0 && c > 0) setFormData(p => ({ ...p, totalWeight: (u * c).toFixed(1) }));
             }, [formData.unitWeight, formData.count]);
 
             useEffect(() => {
-                if(formData.installDate && formData.expectedLife) {
+                if (formData.installDate && formData.expectedLife) {
                     const lifeStr = String(formData.expectedLife);
                     const years = parseInt(lifeStr.match(/\d+/)?.[0] || "0");
-                    if(years > 0) {
+                    if (years > 0) {
                         const d = new Date(formData.installDate);
                         d.setFullYear(d.getFullYear() + years);
-                        setFormData(p => ({...p, expiryDate: d.toISOString().split('T')[0]}));
+                        setFormData(p => ({ ...p, expiryDate: d.toISOString().split('T')[0] }));
                     }
                 }
             }, [formData.installDate, formData.expectedLife]);
@@ -420,11 +490,11 @@
             const saveRecord = async (e) => {
                 e.preventDefault();
                 if (!user) return;
-                
+
                 if (entryMode === 'report') {
                     if (!currentReport) { alert("Start a report first."); return; }
-                    const newItem = { ...formData, weight: parseFloat(formData.totalWeight)||0, unitWeight: parseFloat(formData.unitWeight)||0, count: parseInt(formData.count)||0, id: Date.now().toString() };
-                    
+                    const newItem = { ...formData, weight: parseFloat(formData.totalWeight) || 0, unitWeight: parseFloat(formData.unitWeight) || 0, count: parseInt(formData.count) || 0, id: Date.now().toString() };
+
                     if (editingReportItemIndex !== null) {
                         const updatedItems = [...currentReport.items];
                         updatedItems[editingReportItemIndex] = newItem;
@@ -435,38 +505,38 @@
                     }
 
                     // Auto-Add UPS
-                    const upsKey = ((formData.upsMake||"").trim() + (formData.upsModel||"").trim()).toLowerCase();
-                    const upsExists = fullUpsLibrary.some(u => ((u.make||"").trim() + (u.model||"").trim()).toLowerCase() === upsKey);
+                    const upsKey = ((formData.upsMake || "").trim() + (formData.upsModel || "").trim()).toLowerCase();
+                    const upsExists = fullUpsLibrary.some(u => ((u.make || "").trim() + (u.model || "").trim()).toLowerCase() === upsKey);
                     if (!upsExists && formData.upsMake && formData.upsModel) {
                         await addDoc(collection(db, 'custom_ups_library'), { make: formData.upsMake, model: formData.upsModel, type: 'Other' });
                     }
 
                     // Keep context
-                    setFormData(prev => ({...prev, batteryModel: '', manufacturer: '', unitWeight: '', totalWeight: '', count: '', ampHours: '', expectedLife: '', dateCode: '', notes: ''})); 
+                    setFormData(prev => ({ ...prev, batteryModel: '', manufacturer: '', unitWeight: '', totalWeight: '', count: '', ampHours: '', expectedLife: '', dateCode: '', notes: '' }));
                 } else {
                     try {
-                        const payload = { ...formData, weight: parseFloat(formData.totalWeight)||0, unitWeight: parseFloat(formData.unitWeight)||0, count: parseInt(formData.count)||0, dateStr: new Date().toLocaleDateString(), archived: false };
-                        if(formData.location && !savedSources.includes(formData.location)) await addDoc(collection(db, 'saved_sources'), {name: formData.location});
-                        
-                        const modelKey = ((formData.manufacturer||"").trim() + (formData.batteryModel||"").trim()).toLowerCase();
-                        const exists = fullLibrary.some(b => ((b.manufacturer||"").trim() + (b.model||"").trim()).toLowerCase() === modelKey);
+                        const payload = { ...formData, weight: parseFloat(formData.totalWeight) || 0, unitWeight: parseFloat(formData.unitWeight) || 0, count: parseInt(formData.count) || 0, dateStr: new Date().toLocaleDateString(), archived: false };
+                        if (formData.location && !savedSources.includes(formData.location)) await addDoc(collection(db, 'saved_sources'), { name: formData.location });
+
+                        const modelKey = ((formData.manufacturer || "").trim() + (formData.batteryModel || "").trim()).toLowerCase();
+                        const exists = fullLibrary.some(b => ((b.manufacturer || "").trim() + (b.model || "").trim()).toLowerCase() === modelKey);
                         if (!exists && formData.batteryModel && formData.manufacturer) {
-                            await addDoc(collection(db, 'custom_library'), { manufacturer: formData.manufacturer, model: formData.batteryModel, type: formData.type, weight: parseFloat(formData.unitWeight)||0, ah: formData.ampHours, life: formData.expectedLife });
+                            await addDoc(collection(db, 'custom_library'), { manufacturer: formData.manufacturer, model: formData.batteryModel, type: formData.type, weight: parseFloat(formData.unitWeight) || 0, ah: formData.ampHours, life: formData.expectedLife });
                         }
 
-                        if(editingId) {
+                        if (editingId) {
                             try {
                                 await updateDoc(doc(db, 'recycling_logs', editingId), payload);
                             } catch (err) {
-                                await setDoc(doc(db, 'recycling_logs', editingId), {...payload, createdAt: serverTimestamp()});
+                                await setDoc(doc(db, 'recycling_logs', editingId), { ...payload, createdAt: serverTimestamp() });
                             }
                         }
-                        else await addDoc(collection(db, 'recycling_logs'), {...payload, createdAt: serverTimestamp()});
-                        
+                        else await addDoc(collection(db, 'recycling_logs'), { ...payload, createdAt: serverTimestamp() });
+
                         setEditingId(null);
                         setFormData({ batteryModel: '', manufacturer: '', type: 'Lead-Acid', lithiumType: '', unitWeight: '', totalWeight: '', count: '', ampHours: '', expectedLife: '', dateCode: '', notes: '', location: '', installDate: new Date().toISOString().split('T')[0], expiryDate: '', room: '', building: '', site: '', upsMake: '', upsModel: '', upsSerial: '', upsKva: '' });
                         setActiveTab('dashboard');
-                    } catch(err) { console.error(err); alert("Error saving."); }
+                    } catch (err) { console.error(err); alert("Error saving."); }
                 }
             };
 
@@ -483,54 +553,54 @@
                 } catch (e) { console.error(e); }
             };
 
-            const openReportForEdit = (report) => { 
-                setCurrentReport({ ...report, serviceHistory: report.serviceHistory || [] }); 
-                setEntryMode('report'); 
-                setActiveTab('log'); 
+            const openReportForEdit = (report) => {
+                setCurrentReport({ ...report, serviceHistory: report.serviceHistory || [] });
+                setEntryMode('report');
+                setActiveTab('log');
                 setReportSubTab('items');
             };
 
             const logServiceEvent = async () => {
-                if(!currentReport) return;
+                if (!currentReport) return;
                 const note = prompt("Enter service note (e.g. Annual PM, Fan Replacement):");
-                if(!note) return;
+                if (!note) return;
                 const newEvent = { date: new Date().toLocaleDateString(), note, user: "Tech" };
                 const updatedHistory = [...(currentReport.serviceHistory || []), newEvent];
-                setCurrentReport(prev => ({...prev, serviceHistory: updatedHistory}));
-                if(currentReport.id) { await updateDoc(doc(db, 'service_reports', currentReport.id), { serviceHistory: updatedHistory }); }
+                setCurrentReport(prev => ({ ...prev, serviceHistory: updatedHistory }));
+                if (currentReport.id) { await updateDoc(doc(db, 'service_reports', currentReport.id), { serviceHistory: updatedHistory }); }
             };
 
             const saveSettings = async () => { if (!user) return; await setDoc(doc(db, 'settings', 'global_config'), appSettings); alert("Settings Saved!"); };
-            
+
             const clearRecycleLogs = async () => {
-                if(!confirm("DANGER: Delete ALL recycling logs? Undone.")) return;
+                if (!confirm("DANGER: Delete ALL recycling logs? Undone.")) return;
                 const snap = await getDocs(collection(db, 'recycling_logs'));
                 // Chunk deletion
-                const chunks = []; for (let i=0; i<snap.docs.length; i+=400) chunks.push(snap.docs.slice(i, i+400));
-                for(const chunk of chunks) { const b = writeBatch(db); chunk.forEach(d=>b.delete(d.ref)); await b.commit(); }
+                const chunks = []; for (let i = 0; i < snap.docs.length; i += 400) chunks.push(snap.docs.slice(i, i + 400));
+                for (const chunk of chunks) { const b = writeBatch(db); chunk.forEach(d => b.delete(d.ref)); await b.commit(); }
                 alert("Cleared.");
             };
             const clearServiceReports = async () => {
-                if(!confirm("DANGER: Delete ALL service reports? Undone.")) return;
+                if (!confirm("DANGER: Delete ALL service reports? Undone.")) return;
                 const snap = await getDocs(collection(db, 'service_reports'));
-                const chunks = []; for (let i=0; i<snap.docs.length; i+=400) chunks.push(snap.docs.slice(i, i+400));
-                for(const chunk of chunks) { const b = writeBatch(db); chunk.forEach(d=>b.delete(d.ref)); await b.commit(); }
+                const chunks = []; for (let i = 0; i < snap.docs.length; i += 400) chunks.push(snap.docs.slice(i, i + 400));
+                for (const chunk of chunks) { const b = writeBatch(db); chunk.forEach(d => b.delete(d.ref)); await b.commit(); }
                 alert("Cleared.");
             };
             const purgeLegacyReports = async () => {
-                if(!confirm("Purge logs linked to reports?")) return;
+                if (!confirm("Purge logs linked to reports?")) return;
                 const q = query(collection(db, 'recycling_logs'), where('archived', '==', true));
                 const snap = await getDocs(q);
                 const toDelete = snap.docs.filter(d => d.data().jobName);
-                const chunks = []; for (let i=0; i<toDelete.length; i+=400) chunks.push(toDelete.slice(i, i+400));
-                for(const chunk of chunks) { const b = writeBatch(db); chunk.forEach(d=>b.delete(d.ref)); await b.commit(); }
+                const chunks = []; for (let i = 0; i < toDelete.length; i += 400) chunks.push(toDelete.slice(i, i + 400));
+                for (const chunk of chunks) { const b = writeBatch(db); chunk.forEach(d => b.delete(d.ref)); await b.commit(); }
                 alert(`Purged ${toDelete.length} items.`);
             };
 
             const handleNewLibSubmit = async (e) => {
                 e.preventDefault();
-                const dataToSave = { manufacturer: newLibData.manufacturer, model: newLibData.model, type: newLibData.type, weight: parseFloat(newLibData.weight)||0, ah: newLibData.ah, life: newLibData.life };
-                if(newLibData.id) await updateDoc(doc(db, 'custom_library', newLibData.id), dataToSave);
+                const dataToSave = { manufacturer: newLibData.manufacturer, model: newLibData.model, type: newLibData.type, weight: parseFloat(newLibData.weight) || 0, ah: newLibData.ah, life: newLibData.life };
+                if (newLibData.id) await updateDoc(doc(db, 'custom_library', newLibData.id), dataToSave);
                 else await addDoc(collection(db, 'custom_library'), dataToSave);
                 setAddingLibItem(false); setNewLibData({ id: null, manufacturer: '', model: '', type: 'Lead-Acid', weight: '', ah: '', life: '' });
             };
@@ -538,7 +608,7 @@
             const handleNewUpsSubmit = async (e) => {
                 e.preventDefault();
                 const dataToSave = { make: newUpsData.make, family: newUpsData.family, model: newUpsData.model, type: newUpsData.type, acV: newUpsData.acV, dcV: newUpsData.dcV };
-                if(newUpsData.id) await updateDoc(doc(db, 'custom_ups_library', newUpsData.id), dataToSave);
+                if (newUpsData.id) await updateDoc(doc(db, 'custom_ups_library', newUpsData.id), dataToSave);
                 else await addDoc(collection(db, 'custom_ups_library'), dataToSave);
                 setAddingUpsItem(false); setNewUpsData({ id: null, make: '', family: '', model: '', type: '', acV: '', dcV: '' });
             };
@@ -554,65 +624,65 @@
                 setNewUpsData({ id: item.id || null, make: item.make || '', family: item.family || '', model: item.model || '', type: item.type || '', acV: item.acV || '', dcV: item.dcV || '' });
                 setAddingUpsItem(true); window.scrollTo({ top: 0, behavior: 'smooth' });
             };
-            
+
             const handleDeleteLibItem = async (e, item, col) => {
                 e.stopPropagation();
                 if (!item.id) { alert("Cannot delete built-in items."); return; }
-                if(confirm("Delete item?")) await deleteDoc(doc(db, col, item.id));
+                if (confirm("Delete item?")) await deleteDoc(doc(db, col, item.id));
             };
 
             const handleModelSearch = (val) => {
-                setFormData(p => ({...p, batteryModel: val}));
-                if(val.length > 1) {
+                setFormData(p => ({ ...p, batteryModel: val }));
+                if (val.length > 1) {
                     const s = val.toLowerCase();
-                    setSuggestions(fullLibrary.filter(b => (b.model||'').toLowerCase().includes(s) || (b.manufacturer||'').toLowerCase().includes(s)));
+                    setSuggestions(fullLibrary.filter(b => (b.model || '').toLowerCase().includes(s) || (b.manufacturer || '').toLowerCase().includes(s)));
                 } else setSuggestions([]);
             };
-            
+
             const handleUpsSearch = (val) => {
-                setFormData(p => ({...p, upsModel: val}));
-                if(val.length > 1) {
+                setFormData(p => ({ ...p, upsModel: val }));
+                if (val.length > 1) {
                     const s = val.toLowerCase();
-                    setUpsSuggestions(fullUpsLibrary.filter(u => (u.model||'').toLowerCase().includes(s) || (u.make||'').toLowerCase().includes(s) || (u.family||'').toLowerCase().includes(s)));
+                    setUpsSuggestions(fullUpsLibrary.filter(u => (u.model || '').toLowerCase().includes(s) || (u.make || '').toLowerCase().includes(s) || (u.family || '').toLowerCase().includes(s)));
                 } else setUpsSuggestions([]);
             }
 
             const selectBattery = (b) => {
-                setFormData(p => ({ ...p, batteryModel: b.model, manufacturer: b.manufacturer, type: b.type, unitWeight: String(b.weight), ampHours: String(b.ah||''), expectedLife: String(b.life||'') }));
+                setFormData(p => ({ ...p, batteryModel: b.model, manufacturer: b.manufacturer, type: b.type, unitWeight: String(b.weight), ampHours: String(b.ah || ''), expectedLife: String(b.life || '') }));
                 setSuggestions([]);
             };
 
             const selectUps = (u) => {
-                setFormData(p => ({...p, upsMake: u.make, upsModel: `${u.family ? u.family + ' ' : ''}${u.model}`, upsKva: '' }));
+                setFormData(p => ({ ...p, upsMake: u.make, upsModel: `${u.family ? u.family + ' ' : ''}${u.model}`, upsKva: '' }));
                 setUpsSuggestions([]);
             };
 
             const aiScan = async (e) => {
-                const file = e.target.files[0]; if(!file) return;
-                if(!GEMINI_API_KEY) { alert("API Key missing."); return; }
+                const file = e.target.files[0]; if (!file) return;
+                if (!GEMINI_API_KEY) { alert("API Key missing."); return; }
                 setScanning(true);
                 const reader = new FileReader();
                 reader.onloadend = async () => {
                     try {
-                        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ contents: [{ parts: [{text: "Analyze battery label. Return JSON: manufacturer, model, type, weight (lbs), ah, life."}, {inlineData: {mimeType: file.type, data: reader.result.split(',')[1]}}] }] }) });
+                        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: "Analyze battery label. Return JSON: manufacturer, model, type, weight (lbs), ah, life." }, { inlineData: { mimeType: file.type, data: reader.result.split(',')[1] } }] }] }) });
                         const data = await res.json();
                         const json = JSON.parse(data.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/)[0]);
-                        setFormData(p => ({...p, batteryModel: json.model||'', manufacturer: json.manufacturer||'', type: json.type||'Lead-Acid', unitWeight: String(json.weight||''), ampHours: String(json.ah||''), expectedLife: String(json.life||'')}));
-                    } catch(err) { console.error(err); alert("Scan failed."); }
+                        setFormData(p => ({ ...p, batteryModel: json.model || '', manufacturer: json.manufacturer || '', type: json.type || 'Lead-Acid', unitWeight: String(json.weight || ''), ampHours: String(json.ah || ''), expectedLife: String(json.life || '') }));
+                    } catch (err) { console.error(err); alert("Scan failed."); }
                     setScanning(false);
                 };
                 reader.readAsDataURL(file);
             };
 
             const aiTextSearch = async () => {
-                if(!GEMINI_API_KEY || !formData.batteryModel) return;
+                if (!GEMINI_API_KEY || !formData.batteryModel) return;
                 setSearchingModel(true);
                 try {
-                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ contents: [{ parts: [{text: `Search specs for battery: ${formData.batteryModel}. Return JSON: manufacturer, type, weight (lbs), ah, life.`}] }] }) });
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: `Search specs for battery: ${formData.batteryModel}. Return JSON: manufacturer, type, weight (lbs), ah, life.` }] }] }) });
                     const data = await res.json();
                     const json = JSON.parse(data.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/)[0]);
-                    setFormData(p => ({...p, manufacturer: json.manufacturer||p.manufacturer, type: json.type||p.type, unitWeight: String(json.weight||p.unitWeight), ampHours: String(json.ah||p.ampHours), expectedLife: String(json.life||p.expectedLife)}));
-                } catch(err) { alert("AI Search failed."); }
+                    setFormData(p => ({ ...p, manufacturer: json.manufacturer || p.manufacturer, type: json.type || p.type, unitWeight: String(json.weight || p.unitWeight), ampHours: String(json.ah || p.ampHours), expectedLife: String(json.life || p.expectedLife) }));
+                } catch (err) { alert("AI Search failed."); }
                 setSearchingModel(false);
             };
 
@@ -622,11 +692,11 @@
                     await updateDoc(doc(db, 'recycling_logs', id), { archived: !status });
                 } catch (e) { console.error(e); }
             };
-            
+
             const groupArchivedItems = async () => {
-                if(selectedLogIds.size === 0) return;
+                if (selectedLogIds.size === 0) return;
                 const groupName = prompt("Enter Group/Job Name:", `Job - ${new Date().toLocaleDateString()}`);
-                if(!groupName) return;
+                if (!groupName) return;
                 const batch = writeBatch(db);
                 selectedLogIds.forEach(id => {
                     batch.update(doc(db, 'recycling_logs', id), { archived: true, jobName: groupName });
@@ -644,7 +714,7 @@
             };
 
             const batchDelete = async () => {
-                if(!confirm("Permanently delete selected records?")) return;
+                if (!confirm("Permanently delete selected records?")) return;
                 const batch = writeBatch(db);
                 selectedLogIds.forEach(id => batch.delete(doc(db, 'recycling_logs', id)));
                 await batch.commit(); setSelectedLogIds(new Set()); alert("Deleted Selected.");
@@ -679,26 +749,26 @@
             };
 
             const startPM = (oldReport) => {
-                if(!confirm("Create a new PM Report based on this one?")) return;
+                if (!confirm("Create a new PM Report based on this one?")) return;
                 const newReport = {
                     ...oldReport,
-                    id: null, 
+                    id: null,
                     dateStr: new Date().toLocaleDateString(),
-                    items: oldReport.items.map(i => ({...i, id: Date.now() + Math.random(), notes: ''}))
+                    items: oldReport.items.map(i => ({ ...i, id: Date.now() + Math.random(), notes: '' }))
                 };
                 setCurrentReport(newReport);
                 setEntryMode('report');
                 setActiveTab('log');
             };
-            
+
             const deleteServiceReport = async (e, reportId) => {
                 e.stopPropagation();
                 e.preventDefault();
-                if(!confirm("Permanently delete this report?")) return;
+                if (!confirm("Permanently delete this report?")) return;
                 try {
                     await deleteDoc(doc(db, 'service_reports', reportId));
                     alert("Report deleted.");
-                } catch(err) {
+                } catch (err) {
                     console.error("Delete failed", err);
                     alert("Failed to delete report.");
                 }
@@ -720,14 +790,14 @@
                     subHeader = `${printDisplayOptions.source ? (currentPrintReport.site || '') + ' - ' : ''}${currentPrintReport.dateStr}`;
                     isServiceReport = true;
                 } else if (activeTab === 'archives' && archiveSubTab === 'reports') {
-                    const allServiceItems = serviceReports.flatMap(r => r.items.map(i => ({...i, reportId: r.id, reportCustomer: r.customer, reportSite: r.site})));
+                    const allServiceItems = serviceReports.flatMap(r => r.items.map(i => ({ ...i, reportId: r.id, reportCustomer: r.customer, reportSite: r.site })));
                     itemsToPrint = allServiceItems.filter(i => selectedReportItemIds.has(i.id));
                     isServiceReport = true;
-                    if(itemsToPrint.length > 0) subHeader = "Composite Service Report";
+                    if (itemsToPrint.length > 0) subHeader = "Composite Service Report";
                 } else {
                     const source = activeTab === 'archives' ? archivedLogs : activeLogs;
                     itemsToPrint = selectedLogIds.size > 0 ? source.filter(l => selectedLogIds.has(l.id)) : source;
-                    
+
                     if (appSettings.dynamicReports) {
                         if (archiveGroupBy === 'location') {
                             const uniqueLocs = [...new Set(itemsToPrint.map(l => l.location))];
@@ -752,7 +822,7 @@
                     const bldg = printDisplayOptions.source ? (item.building || 'Main Building') : 'All Buildings';
                     const room = printDisplayOptions.area ? (item.room || 'General Area') : 'All Areas';
                     const upsKey = printDisplayOptions.equipment ? (item.upsSerial ? `${item.upsMake} ${item.upsModel} (SN: ${item.upsSerial})` : 'General Equipment') : 'All Equipment';
-                    
+
                     if (!acc[site]) acc[site] = {};
                     if (!acc[site][bldg]) acc[site][bldg] = {};
                     if (!acc[site][bldg][room]) acc[site][bldg][room] = {};
@@ -766,38 +836,38 @@
                         <div className="no-print mb-8 bg-slate-100 p-4 rounded border">
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="font-bold">Report Configuration</h2>
-                                <div className="flex gap-2"><button type="button" onClick={()=>window.print()} className={`px-4 py-2 text-white rounded ${theme.primary}`}>Print</button><button type="button" onClick={()=>{setPrintMode(false); setCurrentPrintReport(null); setSelectedReportItemIds(new Set());}} className="px-4 py-2 border rounded bg-white text-black">Close</button></div>
+                                <div className="flex gap-2"><button type="button" onClick={() => window.print()} className={`px-4 py-2 text-white rounded ${theme.primary}`}>Print</button><button type="button" onClick={() => { setPrintMode(false); setCurrentPrintReport(null); setSelectedReportItemIds(new Set()); }} className="px-4 py-2 border rounded bg-white text-black">Close</button></div>
                             </div>
-                            
+
                             <div className="mt-4 pt-4 border-t text-xs">
                                 <p className="font-bold mb-2">Display Options</p>
                                 <div className="flex gap-4">
-                                    <label className="flex items-center"><input type="checkbox" checked={printDisplayOptions.company} onChange={e=>setPrintDisplayOptions({...printDisplayOptions, company: e.target.checked})} className="mr-2"/> Company Name</label>
-                                    <label className="flex items-center"><input type="checkbox" checked={printDisplayOptions.source} onChange={e=>setPrintDisplayOptions({...printDisplayOptions, source: e.target.checked})} className="mr-2"/> Source / Site</label>
-                                    <label className="flex items-center"><input type="checkbox" checked={printDisplayOptions.area} onChange={e=>setPrintDisplayOptions({...printDisplayOptions, area: e.target.checked})} className="mr-2"/> Room / Area</label>
-                                    <label className="flex items-center"><input type="checkbox" checked={printDisplayOptions.equipment} onChange={e=>setPrintDisplayOptions({...printDisplayOptions, equipment: e.target.checked})} className="mr-2"/> Equipment / UPS</label>
+                                    <label className="flex items-center"><input type="checkbox" checked={printDisplayOptions.company} onChange={e => setPrintDisplayOptions({ ...printDisplayOptions, company: e.target.checked })} className="mr-2" /> Company Name</label>
+                                    <label className="flex items-center"><input type="checkbox" checked={printDisplayOptions.source} onChange={e => setPrintDisplayOptions({ ...printDisplayOptions, source: e.target.checked })} className="mr-2" /> Source / Site</label>
+                                    <label className="flex items-center"><input type="checkbox" checked={printDisplayOptions.area} onChange={e => setPrintDisplayOptions({ ...printDisplayOptions, area: e.target.checked })} className="mr-2" /> Room / Area</label>
+                                    <label className="flex items-center"><input type="checkbox" checked={printDisplayOptions.equipment} onChange={e => setPrintDisplayOptions({ ...printDisplayOptions, equipment: e.target.checked })} className="mr-2" /> Equipment / UPS</label>
                                 </div>
                             </div>
                             {isServiceReport && (
                                 <div className="grid grid-cols-3 gap-4 text-xs mt-4 pt-4 border-t">
-                                    <div><p className="font-bold mb-1">Filter Sites</p>{[...new Set(itemsToPrint.map(i => i.site).filter(Boolean))].map(s => <label key={s} className="flex items-center"><input type="checkbox" checked={!printFilters.sites.has(s)} onChange={()=>togglePrintFilter('sites', s)} className="mr-2"/>{s}</label>)}</div>
-                                    <div><p className="font-bold mb-1">Filter Buildings</p>{[...new Set(itemsToPrint.map(i => i.building).filter(Boolean))].map(s => <label key={s} className="flex items-center"><input type="checkbox" checked={!printFilters.buildings.has(s)} onChange={()=>togglePrintFilter('buildings', s)} className="mr-2"/>{s}</label>)}</div>
-                                    <div><p className="font-bold mb-1">Filter Rooms</p>{[...new Set(itemsToPrint.map(i => i.room).filter(Boolean))].map(s => <label key={s} className="flex items-center"><input type="checkbox" checked={!printFilters.rooms.has(s)} onChange={()=>togglePrintFilter('rooms', s)} className="mr-2"/>{s}</label>)}</div>
+                                    <div><p className="font-bold mb-1">Filter Sites</p>{[...new Set(itemsToPrint.map(i => i.site).filter(Boolean))].map(s => <label key={s} className="flex items-center"><input type="checkbox" checked={!printFilters.sites.has(s)} onChange={() => togglePrintFilter('sites', s)} className="mr-2" />{s}</label>)}</div>
+                                    <div><p className="font-bold mb-1">Filter Buildings</p>{[...new Set(itemsToPrint.map(i => i.building).filter(Boolean))].map(s => <label key={s} className="flex items-center"><input type="checkbox" checked={!printFilters.buildings.has(s)} onChange={() => togglePrintFilter('buildings', s)} className="mr-2" />{s}</label>)}</div>
+                                    <div><p className="font-bold mb-1">Filter Rooms</p>{[...new Set(itemsToPrint.map(i => i.room).filter(Boolean))].map(s => <label key={s} className="flex items-center"><input type="checkbox" checked={!printFilters.rooms.has(s)} onChange={() => togglePrintFilter('rooms', s)} className="mr-2" />{s}</label>)}</div>
                                 </div>
                             )}
                         </div>
 
                         <div className="flex justify-between items-end border-b-2 border-black pb-4 mb-6">
                             <div className="flex items-center gap-4">
-                                {appSettings.reportLogo && appSettings.logoUrl && <img src={appSettings.logoUrl} className={`h-12 object-contain ${appSettings.invertLogoPrint ? 'invert' : ''}`}/>}
+                                {appSettings.reportLogo && appSettings.logoUrl && <img src={appSettings.logoUrl} className={`h-12 object-contain ${appSettings.invertLogoPrint ? 'invert' : ''}`} />}
                                 <div>
                                     {printDisplayOptions.company && <h1 className="text-3xl font-bold uppercase tracking-tight">{title}</h1>}
                                     <p className="text-sm text-gray-500">{subHeader}</p>
                                 </div>
                             </div>
-                            <div className="text-right text-sm"><p>{new Date().toLocaleDateString('en-US')}</p><p className="font-bold">Total: {filteredItems.reduce((a,l)=>a+Number(l.weight),0).toLocaleString()} lbs</p></div>
+                            <div className="text-right text-sm"><p>{new Date().toLocaleDateString('en-US')}</p><p className="font-bold">Total: {filteredItems.reduce((a, l) => a + Number(l.weight), 0).toLocaleString()} lbs</p></div>
                         </div>
-                        
+
                         {Object.entries(reportGroups).map(([site, bldgs]) => (
                             <div key={site} className="mb-8">
                                 {(printDisplayOptions.source && Object.keys(reportGroups).length > 1) && <h2 className="text-xl font-bold mb-2 uppercase border-b border-slate-400 pb-1">{site}</h2>}
@@ -810,11 +880,11 @@
                                                     <div className="group-header flex justify-between px-2 py-1 bg-slate-200 border border-black mb-0">
                                                         <span className="font-bold uppercase text-sm">{room}</span>
                                                         <span className="text-xs font-bold">
-                                                            {Object.values(upsUnits).flat().reduce((a,i) => a + parseInt(i.count||0), 0)} Units - {Object.values(upsUnits).flat().reduce((a,i) => a + parseFloat(i.weight||0), 0).toLocaleString()} lbs
+                                                            {Object.values(upsUnits).flat().reduce((a, i) => a + parseInt(i.count || 0), 0)} Units - {Object.values(upsUnits).flat().reduce((a, i) => a + parseFloat(i.weight || 0), 0).toLocaleString()} lbs
                                                         </span>
                                                     </div>
                                                 )}
-                                                
+
                                                 {Object.entries(upsUnits).map(([upsName, items]) => (
                                                     <div key={upsName} className="mb-4 pl-2">
                                                         {printDisplayOptions.equipment && <div className="text-xs font-bold mb-0 mt-2 ups-header text-blue-800 uppercase px-1">{upsName} {items[0].upsKva ? `(${items[0].upsKva})` : ''}</div>}
@@ -823,7 +893,7 @@
                                                             <tbody>{items.map((l, idx) => (
                                                                 <tr key={idx} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50 zebra-row-odd'}`}>
                                                                     <td className="py-1"><span className="font-bold">{l.manufacturer}</span> {l.batteryModel}</td>
-                                                                    {appSettings.showDates && <td className="py-1 text-xs flex items-center gap-2">{formatDate(l.installDate) || '-'} / {formatDate(l.expiryDate) || '-'} <StatusIcon date={l.expiryDate}/></td>}
+                                                                    {appSettings.showDates && <td className="py-1 text-xs flex items-center gap-2">{formatDate(l.installDate) || '-'} / {formatDate(l.expiryDate) || '-'} <StatusIcon date={l.expiryDate} /></td>}
                                                                     <td className="py-1 text-right">{l.unitWeight}</td><td className="py-1 text-right font-bold">{l.count}</td><td className="py-1 text-right font-mono">{l.weight}</td>
                                                                     <td className="py-1 text-xs italic">{l.notes}</td>
                                                                 </tr>
@@ -846,7 +916,7 @@
                     <div className={`z-50 sticky top-0 w-full p-3 md:px-6 flex justify-between items-center bg-slate-900 text-white shadow-md`}>
                         <div className="flex items-center space-x-3">
                             <span className={`w-3 h-3 rounded-full mr-2 ${isOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-slate-500'}`} title={isOnline ? "Online & Syncing" : "Offline Mode"}></span>
-                            {appSettings.logoUrl ? <img src={appSettings.logoUrl} className="h-8 md:h-10 object-contain" /> : <div className={`p-2 rounded-lg ${theme.primary} text-white`}><Battery size={20}/></div>}
+                            {appSettings.logoUrl ? <img src={appSettings.logoUrl} className="h-8 md:h-10 object-contain" /> : <div className={`p-2 rounded-lg ${theme.primary} text-white`}><Battery size={20} /></div>}
                             <h1 className="text-lg md:text-xl font-bold tracking-tight">{String(appSettings.companyName)}</h1>
                         </div>
                         <nav className="hidden md:flex gap-1">{['dashboard', 'log', 'database', 'archives', 'settings'].map(t => (<button key={t} type="button" onClick={() => setActiveTab(t)} className={`px-4 py-2 rounded-lg font-bold capitalize transition-all ${activeTab === t ? `${theme.primary} text-white shadow-md` : 'hover:bg-slate-800'}`}>{t}</button>))}</nav>
@@ -855,19 +925,19 @@
 
                     <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
                         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            
+
                             <div className="lg:col-span-2 space-y-6">
                                 {activeTab === 'dashboard' && (
                                     <>
                                         <div className="grid grid-cols-2 gap-4">
-                                            <Card className={`p-6 border-l-4 ${theme.border}`}><p className="text-xs font-bold opacity-60 uppercase tracking-wider">Total Recycled</p><h3 className="text-3xl font-bold mt-1">{activeLogs.reduce((a,l)=>a+Number(l.weight),0).toLocaleString()} <span className="text-sm font-normal opacity-50">lbs</span></h3></Card>
-                                            <Card className="p-6 border-l-4 border-slate-400 dark:border-slate-600"><p className="text-xs font-bold opacity-60 uppercase tracking-wider">Total Units</p><h3 className="text-3xl font-bold mt-1">{activeLogs.reduce((a,l)=>a+Number(l.count),0).toLocaleString()}</h3></Card>
+                                            <Card className={`p-6 border-l-4 ${theme.border}`}><p className="text-xs font-bold opacity-60 uppercase tracking-wider">Total Recycled</p><h3 className="text-3xl font-bold mt-1">{activeLogs.reduce((a, l) => a + Number(l.weight), 0).toLocaleString()} <span className="text-sm font-normal opacity-50">lbs</span></h3></Card>
+                                            <Card className="p-6 border-l-4 border-slate-400 dark:border-slate-600"><p className="text-xs font-bold opacity-60 uppercase tracking-wider">Total Units</p><h3 className="text-3xl font-bold mt-1">{activeLogs.reduce((a, l) => a + Number(l.count), 0).toLocaleString()}</h3></Card>
                                         </div>
                                         <Card>
                                             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center"><h3 className="font-bold text-sm uppercase opacity-70">Active Manifests</h3>
                                                 <div className="flex gap-2">
-                                                    <button type="button" onClick={groupArchivedItems} disabled={selectedLogIds.size===0} className={`flex items-center text-xs px-3 py-1.5 rounded font-bold text-white ${selectedLogIds.size > 0 ? theme.primary : 'bg-slate-400'}`}><Briefcase size={14} className="mr-1"/> Group Archive</button>
-                                                    <button type="button" onClick={() => setPrintMode(true)} className="flex items-center text-xs bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded hover:opacity-80"><Printer size={14} className="mr-1"/> Print</button>
+                                                    <button type="button" onClick={groupArchivedItems} disabled={selectedLogIds.size === 0} className={`flex items-center text-xs px-3 py-1.5 rounded font-bold text-white ${selectedLogIds.size > 0 ? theme.primary : 'bg-slate-400'}`}><Briefcase size={14} className="mr-1" /> Group Archive</button>
+                                                    <button type="button" onClick={() => setPrintMode(true)} className="flex items-center text-xs bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded hover:opacity-80"><Printer size={14} className="mr-1" /> Print</button>
                                                 </div>
                                             </div>
                                             <div className="overflow-x-auto max-h-[600px]">
@@ -876,11 +946,11 @@
                                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                                         {activeLogs.map((l, idx) => (
                                                             <tr key={l.id} className={`hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800/50'}`}>
-                                                                <td className="p-4"><button type="button" onClick={() => setSelectedLogIds(p => { const n = new Set(p); n.has(l.id) ? n.delete(l.id) : n.add(l.id); return n; })}>{selectedLogIds.has(l.id) ? <CheckSquare size={16} className="text-emerald-500"/> : <Square size={16} className="text-slate-300"/>}</button></td>
+                                                                <td className="p-4"><button type="button" onClick={() => setSelectedLogIds(p => { const n = new Set(p); n.has(l.id) ? n.delete(l.id) : n.add(l.id); return n; })}>{selectedLogIds.has(l.id) ? <CheckSquare size={16} className="text-emerald-500" /> : <Square size={16} className="text-slate-300" />}</button></td>
                                                                 <td><div className="font-bold flex items-center gap-2">{appSettings.showDates && <StatusIcon date={l.expiryDate} />} {l.location}</div><div className="text-xs opacity-60 ml-5">{l.manufacturer} {l.batteryModel}</div></td>
-                                                                {appSettings.showDates && <td className="text-[10px] opacity-70">In: {formatDate(l.installDate) || '-'}<br/>Ex: {formatDate(l.expiryDate) || '-'}</td>}
+                                                                {appSettings.showDates && <td className="text-[10px] opacity-70">In: {formatDate(l.installDate) || '-'}<br />Ex: {formatDate(l.expiryDate) || '-'}</td>}
                                                                 <td className="text-right opacity-70">{l.unitWeight}</td><td className="text-right font-bold">{l.count}</td><td className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">{l.weight}</td>
-                                                                <td className="p-4 text-center flex justify-center gap-2"><button type="button" onClick={() => { setEditingId(l.id); setFormData(l); setActiveTab('log'); }} className="hover:text-blue-500"><Edit2 size={16}/></button><button type="button" onClick={() => toggleArchive(l.id, false)} className="hover:text-amber-500"><Archive size={16}/></button></td>
+                                                                <td className="p-4 text-center flex justify-center gap-2"><button type="button" onClick={() => { setEditingId(l.id); setFormData(l); setActiveTab('log'); }} className="hover:text-blue-500"><Edit2 size={16} /></button><button type="button" onClick={() => toggleArchive(l.id, false)} className="hover:text-amber-500"><Archive size={16} /></button></td>
                                                             </tr>
                                                         ))}
                                                     </tbody>
@@ -904,13 +974,13 @@
                                             <div className="space-y-4">
                                                 <h3 className="font-bold text-lg">Start New Service Job</h3>
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    <div><label className="text-xs font-bold mb-1 block">Customer</label><input list="customers" id="jobCust" className="p-3 w-full rounded border dark:bg-slate-900 dark:border-slate-700" /><datalist id="customers">{savedData.customers.map(c=><option key={c} value={c}/>)}</datalist></div>
-                                                    <div><label className="text-xs font-bold mb-1 block">Site / Location</label><input list="sites" id="jobSite" className="p-3 w-full rounded border dark:bg-slate-900 dark:border-slate-700" /><datalist id="sites">{savedData.sites.map(s=><option key={s} value={s}/>)}</datalist></div>
+                                                    <div><label className="text-xs font-bold mb-1 block">Customer</label><input list="customers" id="jobCust" className="p-3 w-full rounded border dark:bg-slate-900 dark:border-slate-700" /><datalist id="customers">{savedData.customers.map(c => <option key={c} value={c} />)}</datalist></div>
+                                                    <div><label className="text-xs font-bold mb-1 block">Site / Location</label><input list="sites" id="jobSite" className="p-3 w-full rounded border dark:bg-slate-900 dark:border-slate-700" /><datalist id="sites">{savedData.sites.map(s => <option key={s} value={s} />)}</datalist></div>
                                                 </div>
                                                 <button type="button" onClick={() => {
                                                     const c = document.getElementById('jobCust').value;
                                                     const s = document.getElementById('jobSite').value;
-                                                    if(c) setCurrentReport({ customer: c, site: s || 'Main Site', items: [], id: null });
+                                                    if (c) setCurrentReport({ customer: c, site: s || 'Main Site', items: [], id: null });
                                                     else alert("Enter Customer.");
                                                 }} className="w-full py-3 bg-blue-600 text-white rounded font-bold">Create Report Context</button>
                                             </div>
@@ -922,23 +992,23 @@
                                                             <div><h3 className="font-bold text-blue-700 dark:text-blue-300">{currentReport.customer}</h3><p className="text-xs opacity-70">{currentReport.site}</p></div>
                                                             <div className="flex gap-2">
                                                                 <button type="button" onClick={() => { setReportSubTab('history'); }} className="px-3 py-1.5 border hover:bg-slate-100 rounded text-xs">History / Logs</button>
-                                                                <button type="button" onClick={() => { if(confirm("Discard current draft?")) { setCurrentReport(null); localStorage.removeItem('draft_report_v1'); } }} className="px-3 py-1.5 border border-red-200 text-red-500 hover:bg-red-50 rounded text-xs">Discard Draft</button>
+                                                                <button type="button" onClick={() => { if (confirm("Discard current draft?")) { setCurrentReport(null); localStorage.removeItem('draft_report_v1'); } }} className="px-3 py-1.5 border border-red-200 text-red-500 hover:bg-red-50 rounded text-xs">Discard Draft</button>
                                                                 <button type="button" onClick={saveReportToDb} className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded shadow hover:bg-blue-700">Save Report</button>
                                                             </div>
                                                         </div>
                                                         {reportSubTab === 'items' ? (
                                                             <div className="max-h-32 overflow-y-auto text-xs space-y-1">
-                                                                {currentReport.items.map((i,idx) => (
+                                                                {currentReport.items.map((i, idx) => (
                                                                     <div key={idx} className="flex justify-between items-center border-b border-blue-100 dark:border-blue-800/50 py-1 hover:bg-blue-100/50 cursor-pointer p-1 rounded">
                                                                         <span>{i.building} / {i.room}: {i.batteryModel}</span>
-                                                                        <div className="flex gap-2"><span>{i.count}x</span><button type="button" onClick={() => startEditReportItem(i, idx)}><Edit2 size={12}/></button></div>
+                                                                        <div className="flex gap-2"><span>{i.count}x</span><button type="button" onClick={() => startEditReportItem(i, idx)}><Edit2 size={12} /></button></div>
                                                                     </div>
                                                                 ))}
                                                             </div>
                                                         ) : (
                                                             <div className="p-2">
                                                                 <div className="flex justify-between mb-2"><h4 className="font-bold text-xs">Service Events</h4><button type="button" onClick={logServiceEvent} className="text-[10px] text-blue-500 font-bold border px-2 rounded">Log Maintenance</button></div>
-                                                                <div className="space-y-1 text-xs">{currentReport.serviceHistory && currentReport.serviceHistory.map((h,i) => <div key={i} className="flex justify-between border-b py-1"><span>{h.date}: {h.note}</span></div>)}</div>
+                                                                <div className="space-y-1 text-xs">{currentReport.serviceHistory && currentReport.serviceHistory.map((h, i) => <div key={i} className="flex justify-between border-b py-1"><span>{h.date}: {h.note}</span></div>)}</div>
                                                                 <button type="button" onClick={() => setReportSubTab('items')} className="mt-2 text-xs underline">Back to Items</button>
                                                             </div>
                                                         )}
@@ -948,60 +1018,60 @@
                                                 <form onSubmit={saveRecord} className="space-y-6">
                                                     {entryMode === 'report' && (
                                                         <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border dark:border-slate-800 mb-4">
-                                                            <h4 className="text-xs font-bold uppercase mb-3 flex items-center text-blue-500"><MapPin size={14} className="mr-1"/> Location & Equipment</h4>
+                                                            <h4 className="text-xs font-bold uppercase mb-3 flex items-center text-blue-500"><MapPin size={14} className="mr-1" /> Location & Equipment</h4>
                                                             <div className="grid grid-cols-2 gap-4 mb-4">
-                                                                <div><label className="text-[10px] font-bold uppercase opacity-50 mb-1 block">Site Name</label><input list="sites" value={formData.site} onChange={e=>setFormData({...formData, site: e.target.value})} className="w-full p-2.5 rounded border dark:border-slate-700 dark:bg-slate-900 text-xs" /><datalist id="sites">{savedData.sites.map(s=><option key={s} value={s}/>)}</datalist></div>
-                                                                <div><label className="text-[10px] font-bold uppercase opacity-50 mb-1 block">Building</label><input list="buildings" value={formData.building} onChange={e=>setFormData({...formData, building: e.target.value})} className="w-full p-2.5 rounded border dark:border-slate-700 dark:bg-slate-900 text-xs" /><datalist id="buildings">{savedData.buildings.map(b=><option key={b} value={b}/>)}</datalist></div>
+                                                                <div><label className="text-[10px] font-bold uppercase opacity-50 mb-1 block">Site Name</label><input list="sites" value={formData.site} onChange={e => setFormData({ ...formData, site: e.target.value })} className="w-full p-2.5 rounded border dark:border-slate-700 dark:bg-slate-900 text-xs" /><datalist id="sites">{savedData.sites.map(s => <option key={s} value={s} />)}</datalist></div>
+                                                                <div><label className="text-[10px] font-bold uppercase opacity-50 mb-1 block">Building</label><input list="buildings" value={formData.building} onChange={e => setFormData({ ...formData, building: e.target.value })} className="w-full p-2.5 rounded border dark:border-slate-700 dark:bg-slate-900 text-xs" /><datalist id="buildings">{savedData.buildings.map(b => <option key={b} value={b} />)}</datalist></div>
                                                             </div>
                                                             <div className="mb-4">
-                                                                <label className="text-[10px] font-bold uppercase opacity-50 mb-1 block">Room / Area</label><input list="rooms" value={formData.room} onChange={e=>setFormData({...formData, room: e.target.value})} className="w-full p-2.5 rounded border dark:border-slate-700 dark:bg-slate-900 text-xs" /><datalist id="rooms">{savedData.rooms.map(r=><option key={r} value={r}/>)}</datalist>
+                                                                <label className="text-[10px] font-bold uppercase opacity-50 mb-1 block">Room / Area</label><input list="rooms" value={formData.room} onChange={e => setFormData({ ...formData, room: e.target.value })} className="w-full p-2.5 rounded border dark:border-slate-700 dark:bg-slate-900 text-xs" /><datalist id="rooms">{savedData.rooms.map(r => <option key={r} value={r} />)}</datalist>
                                                             </div>
                                                             <div className="grid grid-cols-2 gap-2">
-                                                                <div className="relative"><input placeholder="UPS Make" value={formData.upsMake} onChange={(e) => {setFormData({...formData, upsMake: e.target.value}); if(e.target.value.length>1) setUpsSuggestions(groupedUps[e.target.value] ? Object.values(groupedUps[e.target.value]).flat() : fullUpsLibrary.filter(u=>u.make.toLowerCase().includes(e.target.value.toLowerCase()))); else setUpsSuggestions([]);}} className="p-2 w-full text-xs border rounded dark:bg-slate-900 dark:border-slate-700" />
-                                                                {upsSuggestions.length > 0 && <div className="absolute z-10 w-full bg-white dark:bg-slate-800 border dark:border-slate-700 max-h-32 overflow-y-auto">{upsSuggestions.map((u,i)=><div key={i} className="p-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer" onClick={()=>{selectUps(u)}}>{u.make} {u.model}</div>)}</div>}</div>
-                                                                <input placeholder="UPS Model" value={formData.upsModel} onChange={e=>setFormData({...formData, upsModel: e.target.value})} className="p-2 text-xs border rounded dark:bg-slate-900 dark:border-slate-700" />
-                                                                <input placeholder="Serial #" value={formData.upsSerial} onChange={e=>setFormData({...formData, upsSerial: e.target.value})} className="p-2 text-xs border rounded dark:bg-slate-900 dark:border-slate-700" />
-                                                                <input placeholder="kVa Rating" value={formData.upsKva} onChange={e=>setFormData({...formData, upsKva: e.target.value})} className="p-2 text-xs border rounded dark:bg-slate-900 dark:border-slate-700" />
+                                                                <div className="relative"><input placeholder="UPS Make" value={formData.upsMake} onChange={(e) => { setFormData({ ...formData, upsMake: e.target.value }); if (e.target.value.length > 1) setUpsSuggestions(groupedUps[e.target.value] ? Object.values(groupedUps[e.target.value]).flat() : fullUpsLibrary.filter(u => u.make.toLowerCase().includes(e.target.value.toLowerCase()))); else setUpsSuggestions([]); }} className="p-2 w-full text-xs border rounded dark:bg-slate-900 dark:border-slate-700" />
+                                                                    {upsSuggestions.length > 0 && <div className="absolute z-10 w-full bg-white dark:bg-slate-800 border dark:border-slate-700 max-h-32 overflow-y-auto">{upsSuggestions.map((u, i) => <div key={i} className="p-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer" onClick={() => { selectUps(u) }}>{u.make} {u.model}</div>)}</div>}</div>
+                                                                <input placeholder="UPS Model" value={formData.upsModel} onChange={e => setFormData({ ...formData, upsModel: e.target.value })} className="p-2 text-xs border rounded dark:bg-slate-900 dark:border-slate-700" />
+                                                                <input placeholder="Serial #" value={formData.upsSerial} onChange={e => setFormData({ ...formData, upsSerial: e.target.value })} className="p-2 text-xs border rounded dark:bg-slate-900 dark:border-slate-700" />
+                                                                <input placeholder="kVa Rating" value={formData.upsKva} onChange={e => setFormData({ ...formData, upsKva: e.target.value })} className="p-2 text-xs border rounded dark:bg-slate-900 dark:border-slate-700" />
                                                             </div>
                                                         </div>
                                                     )}
 
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                        <div className="relative"><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Battery Model</label><div className="flex gap-2"><input value={formData.batteryModel} onChange={(e) => handleModelSearch(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500 outline-none transition-all" placeholder="Type model..." /><button type="button" onClick={aiTextSearch} disabled={searchingModel} className="p-3 border rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">{searchingModel ? <Loader2 className="animate-spin"/> : <Sparkles className="text-amber-500"/>}</button></div>
-                                                        {suggestions.length > 0 && <div className="absolute z-50 w-full mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border dark:border-slate-700 max-h-60 overflow-y-auto p-1">{suggestions.map((s,i) => <div key={i} onClick={() => selectBattery(s)} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg cursor-pointer border-b dark:border-slate-700 last:border-0 flex justify-between"><span className="font-bold">{s.manufacturer} {s.model}</span><span className="text-xs opacity-50">{s.weight} lbs</span></div>)}</div>}</div>
-                                                        <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Manufacturer</label><input value={formData.manufacturer} onChange={e=>setFormData({...formData, manufacturer: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900" /></div>
+                                                        <div className="relative"><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Battery Model</label><div className="flex gap-2"><input value={formData.batteryModel} onChange={(e) => handleModelSearch(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500 outline-none transition-all" placeholder="Type model..." /><button type="button" onClick={aiTextSearch} disabled={searchingModel} className="p-3 border rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">{searchingModel ? <Loader2 className="animate-spin" /> : <Sparkles className="text-amber-500" />}</button></div>
+                                                            {suggestions.length > 0 && <div className="absolute z-50 w-full mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border dark:border-slate-700 max-h-60 overflow-y-auto p-1">{suggestions.map((s, i) => <div key={i} onClick={() => selectBattery(s)} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg cursor-pointer border-b dark:border-slate-700 last:border-0 flex justify-between"><span className="font-bold">{s.manufacturer} {s.model}</span><span className="text-xs opacity-50">{s.weight} lbs</span></div>)}</div>}</div>
+                                                        <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Manufacturer</label><input value={formData.manufacturer} onChange={e => setFormData({ ...formData, manufacturer: e.target.value })} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900" /></div>
                                                     </div>
-                                                    
+
                                                     {entryMode !== 'report' && (
                                                         <div className="grid grid-cols-2 gap-6">
-                                                            <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Source / Customer</label><input list="sources" value={formData.location} onChange={e=>setFormData({...formData, location: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900" /><datalist id="sources">{savedSources.map(s=><option key={s} value={s}/>)}</datalist></div>
-                                                            <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Type</label><select value={formData.type} onChange={e=>setFormData({...formData, type: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"><option>Lead-Acid</option><option>Wet Cell</option><option>Li-ion</option></select></div>
+                                                            <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Source / Customer</label><input list="sources" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900" /><datalist id="sources">{savedSources.map(s => <option key={s} value={s} />)}</datalist></div>
+                                                            <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Type</label><select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"><option>Lead-Acid</option><option>Wet Cell</option><option>Li-ion</option></select></div>
                                                         </div>
                                                     )}
 
                                                     <div className="grid grid-cols-3 gap-4 bg-slate-100 dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-                                                        <div><label className="text-[10px] font-bold uppercase opacity-50">Unit Lbs</label><input type="number" step="0.1" value={formData.unitWeight} onChange={e=>setFormData({...formData, unitWeight: e.target.value})} className="w-full p-2 bg-transparent border-b border-slate-300 dark:border-slate-600 focus:border-emerald-500 outline-none font-mono font-bold" placeholder="0.0" /></div>
-                                                        <div><label className="text-[10px] font-bold uppercase opacity-50">Count</label><input type="number" value={formData.count} onChange={e=>setFormData({...formData, count: e.target.value})} className="w-full p-2 bg-transparent border-b border-slate-300 dark:border-slate-600 focus:border-emerald-500 outline-none font-mono font-bold" placeholder="0" /></div>
+                                                        <div><label className="text-[10px] font-bold uppercase opacity-50">Unit Lbs</label><input type="number" step="0.1" value={formData.unitWeight} onChange={e => setFormData({ ...formData, unitWeight: e.target.value })} className="w-full p-2 bg-transparent border-b border-slate-300 dark:border-slate-600 focus:border-emerald-500 outline-none font-mono font-bold" placeholder="0.0" /></div>
+                                                        <div><label className="text-[10px] font-bold uppercase opacity-50">Count</label><input type="number" value={formData.count} onChange={e => setFormData({ ...formData, count: e.target.value })} className="w-full p-2 bg-transparent border-b border-slate-300 dark:border-slate-600 focus:border-emerald-500 outline-none font-mono font-bold" placeholder="0" /></div>
                                                         <div><label className="text-[10px] font-bold uppercase opacity-50">Total Lbs</label><input readOnly value={formData.totalWeight} className="w-full p-2 bg-transparent border-b border-transparent font-mono font-bold text-emerald-600" /></div>
                                                     </div>
 
                                                     {appSettings.showDates && (
                                                         <div className="grid grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-800/30 p-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-                                                            <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Install Date</label><input type="date" value={formData.installDate} onChange={e=>setFormData({...formData, installDate: e.target.value})} className="w-full p-2 rounded-lg border dark:border-slate-600 dark:bg-slate-800" /></div>
-                                                            <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Expected Life</label><input type="text" placeholder="e.g. 5 Years" value={formData.expectedLife} onChange={e=>setFormData({...formData, expectedLife: e.target.value})} className="w-full p-2 rounded-lg border dark:border-slate-600 dark:bg-slate-800" /></div>
-                                                            <div className="col-span-2"><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Expiry (Auto-Calc)</label><input type="date" value={formData.expiryDate} onChange={e=>setFormData({...formData, expiryDate: e.target.value})} className="w-full p-2 rounded-lg border dark:border-slate-600 dark:bg-slate-800 font-bold text-slate-600 dark:text-slate-300" /></div>
+                                                            <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Install Date</label><input type="date" value={formData.installDate} onChange={e => setFormData({ ...formData, installDate: e.target.value })} className="w-full p-2 rounded-lg border dark:border-slate-600 dark:bg-slate-800" /></div>
+                                                            <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Expected Life</label><input type="text" placeholder="e.g. 5 Years" value={formData.expectedLife} onChange={e => setFormData({ ...formData, expectedLife: e.target.value })} className="w-full p-2 rounded-lg border dark:border-slate-600 dark:bg-slate-800" /></div>
+                                                            <div className="col-span-2"><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Expiry (Auto-Calc)</label><input type="date" value={formData.expiryDate} onChange={e => setFormData({ ...formData, expiryDate: e.target.value })} className="w-full p-2 rounded-lg border dark:border-slate-600 dark:bg-slate-800 font-bold text-slate-600 dark:text-slate-300" /></div>
                                                         </div>
                                                     )}
-                                                    
+
                                                     {entryMode === 'report' && (
-                                                        <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Item Notes</label><input value={formData.notes} onChange={e=>setFormData({...formData, notes: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900" placeholder="e.g. String 1, Shelf 2"/></div>
+                                                        <div><label className="text-xs font-bold uppercase opacity-50 mb-1 block">Item Notes</label><input value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900" placeholder="e.g. String 1, Shelf 2" /></div>
                                                     )}
 
                                                     <div className="flex justify-between items-center">
                                                         <div className="flex gap-2">
                                                             <label className={`flex items-center px-3 py-2 rounded-lg cursor-pointer bg-slate-200 dark:bg-slate-800 hover:opacity-80`}>
-                                                                <Camera size={16} className="mr-2"/> <span className="text-xs font-bold">Scan</span>
-                                                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={aiScan} disabled={scanning}/>
+                                                                <Camera size={16} className="mr-2" /> <span className="text-xs font-bold">Scan</span>
+                                                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={aiScan} disabled={scanning} />
                                                             </label>
                                                         </div>
                                                         <button type="submit" className={`px-8 py-3 rounded-xl font-bold text-white shadow-xl transition-all hover:scale-[1.02] active:scale-95 ${entryMode === 'report' ? 'bg-blue-600' : theme.primary}`}>{editingReportItemIndex !== null ? 'Update Item' : (editingId ? 'Update Entry' : (entryMode === 'report' ? 'Add to Report' : 'Save Log'))}</button>
@@ -1020,9 +1090,9 @@
                                                 <button type="button" onClick={() => setDbSubTab('ups')} className={`px-4 py-2 rounded-md text-xs font-bold transition-all ${dbSubTab === 'ups' ? `${theme.primary} text-white shadow-md` : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}>UPS Equipment</button>
                                             </div>
                                             {dbSubTab === 'batteries' ? (
-                                                <button type="button" onClick={() => setAddingLibItem(true)} className="flex items-center px-3 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold shadow hover:bg-emerald-600"><Plus size={14} className="mr-1"/> Add Battery</button>
+                                                <button type="button" onClick={() => setAddingLibItem(true)} className="flex items-center px-3 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold shadow hover:bg-emerald-600"><Plus size={14} className="mr-1" /> Add Battery</button>
                                             ) : (
-                                                <button type="button" onClick={() => setAddingUpsItem(true)} className="flex items-center px-3 py-2 bg-blue-500 text-white rounded-lg text-xs font-bold shadow hover:bg-blue-600"><Plus size={14} className="mr-1"/> Add UPS</button>
+                                                <button type="button" onClick={() => setAddingUpsItem(true)} className="flex items-center px-3 py-2 bg-blue-500 text-white rounded-lg text-xs font-bold shadow hover:bg-blue-600"><Plus size={14} className="mr-1" /> Add UPS</button>
                                             )}
                                         </div>
 
@@ -1030,50 +1100,50 @@
                                             <Card className="p-4 border-emerald-500 border-2">
                                                 <h3 className="font-bold text-xs uppercase mb-3">New Battery Spec</h3>
                                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-                                                    <input placeholder="Manufacturer" value={newLibData.manufacturer} onChange={e=>setNewLibData({...newLibData, manufacturer: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
-                                                    <input placeholder="Model" value={newLibData.model} onChange={e=>setNewLibData({...newLibData, model: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
-                                                    <input placeholder="Lbs" type="number" value={newLibData.weight} onChange={e=>setNewLibData({...newLibData, weight: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
-                                                    <select value={newLibData.type} onChange={e=>setNewLibData({...newLibData, type: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900"><option>Lead-Acid</option><option>Wet Cell</option><option>Li-ion</option></select>
+                                                    <input placeholder="Manufacturer" value={newLibData.manufacturer} onChange={e => setNewLibData({ ...newLibData, manufacturer: e.target.value })} className="p-2 text-xs rounded border dark:bg-slate-900" />
+                                                    <input placeholder="Model" value={newLibData.model} onChange={e => setNewLibData({ ...newLibData, model: e.target.value })} className="p-2 text-xs rounded border dark:bg-slate-900" />
+                                                    <input placeholder="Lbs" type="number" value={newLibData.weight} onChange={e => setNewLibData({ ...newLibData, weight: e.target.value })} className="p-2 text-xs rounded border dark:bg-slate-900" />
+                                                    <select value={newLibData.type} onChange={e => setNewLibData({ ...newLibData, type: e.target.value })} className="p-2 text-xs rounded border dark:bg-slate-900"><option>Lead-Acid</option><option>Wet Cell</option><option>Li-ion</option></select>
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-2 mb-3">
-                                                    <input placeholder="Expected Life" value={newLibData.life} onChange={e=>setNewLibData({...newLibData, life: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
-                                                    <input placeholder="Amp Hours" value={newLibData.ah} onChange={e=>setNewLibData({...newLibData, ah: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
+                                                    <input placeholder="Expected Life" value={newLibData.life} onChange={e => setNewLibData({ ...newLibData, life: e.target.value })} className="p-2 text-xs rounded border dark:bg-slate-900" />
+                                                    <input placeholder="Amp Hours" value={newLibData.ah} onChange={e => setNewLibData({ ...newLibData, ah: e.target.value })} className="p-2 text-xs rounded border dark:bg-slate-900" />
                                                 </div>
                                                 <div className="flex justify-end gap-2"><button type="button" onClick={() => setAddingLibItem(false)} className="px-3 py-1 text-xs border rounded">Cancel</button><button onClick={handleNewLibSubmit} className="px-3 py-1 text-xs bg-emerald-500 text-white rounded font-bold">Save Spec</button></div>
                                             </Card>
                                         )}
-                                        
+
                                         {addingUpsItem && (
                                             <Card className="p-4 border-blue-500 border-2">
                                                 <h3 className="font-bold text-xs uppercase mb-3">New UPS Spec</h3>
                                                 <div className="grid grid-cols-3 gap-2 mb-3">
-                                                    <input placeholder="Make" value={newUpsData.make} onChange={e=>setNewUpsData({...newUpsData, make: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
-                                                    <input placeholder="Model" value={newUpsData.model} onChange={e=>setNewUpsData({...newUpsData, model: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
-                                                    <input placeholder="Type (3-Phase/Single)" value={newUpsData.type} onChange={e=>setNewUpsData({...newUpsData, type: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
-                                                    <input placeholder="Family" value={newUpsData.family} onChange={e=>setNewUpsData({...newUpsData, family: e.target.value})} className="p-2 text-xs rounded border dark:bg-slate-900" />
+                                                    <input placeholder="Make" value={newUpsData.make} onChange={e => setNewUpsData({ ...newUpsData, make: e.target.value })} className="p-2 text-xs rounded border dark:bg-slate-900" />
+                                                    <input placeholder="Model" value={newUpsData.model} onChange={e => setNewUpsData({ ...newUpsData, model: e.target.value })} className="p-2 text-xs rounded border dark:bg-slate-900" />
+                                                    <input placeholder="Type (3-Phase/Single)" value={newUpsData.type} onChange={e => setNewUpsData({ ...newUpsData, type: e.target.value })} className="p-2 text-xs rounded border dark:bg-slate-900" />
+                                                    <input placeholder="Family" value={newUpsData.family} onChange={e => setNewUpsData({ ...newUpsData, family: e.target.value })} className="p-2 text-xs rounded border dark:bg-slate-900" />
                                                 </div>
                                                 <div className="flex justify-end gap-2"><button type="button" onClick={() => setAddingUpsItem(false)} className="px-3 py-1 text-xs border rounded">Cancel</button><button onClick={handleNewUpsSubmit} className="px-3 py-1 text-xs bg-blue-500 text-white rounded font-bold">Save UPS</button></div>
                                             </Card>
                                         )}
 
                                         <Card className="min-h-[400px]">
-                                            <div className="p-4 border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center"><Search size={14} className="opacity-50 mr-2"/><input placeholder="Search database..." value={dbSearch} onChange={e=>setDbSearch(e.target.value)} className="bg-transparent outline-none text-sm w-full" /></div>
+                                            <div className="p-4 border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center"><Search size={14} className="opacity-50 mr-2" /><input placeholder="Search database..." value={dbSearch} onChange={e => setDbSearch(e.target.value)} className="bg-transparent outline-none text-sm w-full" /></div>
                                             <div className="p-4 space-y-2 max-h-[600px] overflow-y-auto">
                                                 {dbSubTab === 'batteries' ? Object.entries(groupedLib).map(([manuf, items]) => (
                                                     <div key={manuf} className="border dark:border-slate-700 rounded-lg overflow-hidden">
                                                         <button type="button" onClick={() => setExpandedLibFolders(p => { const n = new Set(p); n.has(manuf) ? n.delete(manuf) : n.add(manuf); return n; })} className="w-full p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                                            <div className="flex items-center gap-3"><Folder size={18} className="text-emerald-400"/><span className="font-bold text-sm">{manuf}</span></div><span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded opacity-70">{items.length}</span>
+                                                            <div className="flex items-center gap-3"><Folder size={18} className="text-emerald-400" /><span className="font-bold text-sm">{manuf}</span></div><span className="text-[10px] bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded opacity-70">{items.length}</span>
                                                         </button>
                                                         {expandedLibFolders.has(manuf) && (
                                                             <div className="bg-slate-50 dark:bg-slate-900/50 border-t dark:border-slate-700 p-2 grid grid-cols-1 gap-2">
-                                                                {items.map((b,i) => (
+                                                                {items.map((b, i) => (
                                                                     <div key={i} className={`p-2 bg-white dark:bg-slate-800 rounded border dark:border-slate-700 flex justify-between group cursor-pointer hover:border-emerald-500 ${i % 2 === 0 ? 'bg-slate-50 dark:bg-slate-900' : ''}`}>
-                                                                        <div onClick={() => { setFormData({ batteryModel: b.model, manufacturer: b.manufacturer, type: b.type, unitWeight: String(b.weight), ampHours: String(b.ah||''), expectedLife: String(b.life||'') }); setActiveTab('log'); }}>
+                                                                        <div onClick={() => { setFormData({ batteryModel: b.model, manufacturer: b.manufacturer, type: b.type, unitWeight: String(b.weight), ampHours: String(b.ah || ''), expectedLife: String(b.life || '') }); setActiveTab('log'); }}>
                                                                             <span className="text-xs font-bold block">{b.model}</span><span className="text-[10px] opacity-60">Type: {b.type} • {b.weight} lbs • Life: {b.life || 'N/A'} • AH: {b.ah || 'N/A'}</span>
                                                                         </div>
                                                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-                                                                            <button type="button" onClick={(e) => handleEditLibItem(e, b)} className="hover:bg-slate-100 dark:hover:bg-slate-700 p-1 rounded"><MoreHorizontal size={14}/></button>
-                                                                            {b.id && <button type="button" onClick={(e) => handleDeleteLibItem(e, b, 'custom_library')} className="hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded text-red-500"><Trash2 size={14}/></button>}
+                                                                            <button type="button" onClick={(e) => handleEditLibItem(e, b)} className="hover:bg-slate-100 dark:hover:bg-slate-700 p-1 rounded"><MoreHorizontal size={14} /></button>
+                                                                            {b.id && <button type="button" onClick={(e) => handleDeleteLibItem(e, b, 'custom_library')} className="hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded text-red-500"><Trash2 size={14} /></button>}
                                                                         </div>
                                                                     </div>
                                                                 ))}
@@ -1085,22 +1155,22 @@
                                                     Object.entries(groupedUps).map(([make, families]) => (
                                                         <div key={make} className="border dark:border-slate-700 rounded-lg overflow-hidden">
                                                             <button type="button" onClick={() => setExpandedUpsFolders(p => { const n = new Set(p); n.has(make) ? n.delete(make) : n.add(make); return n; })} className="w-full p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                                                <div className="flex items-center gap-3"><Server size={18} className="text-blue-400"/><span className="font-bold text-sm">{make}</span></div>
+                                                                <div className="flex items-center gap-3"><Server size={18} className="text-blue-400" /><span className="font-bold text-sm">{make}</span></div>
                                                             </button>
                                                             {expandedUpsFolders.has(make) && (
                                                                 <div className="bg-slate-50 dark:bg-slate-900/50 border-t dark:border-slate-700 p-2">
                                                                     {Object.entries(families).map(([fam, models]) => (
                                                                         <div key={fam} className="mb-2">
                                                                             <h4 className="text-[10px] font-bold uppercase text-slate-500 pl-2 mb-1">{fam}</h4>
-                                                                            {models.map((u,i) => (
+                                                                            {models.map((u, i) => (
                                                                                 <div key={i} className="p-2 ml-2 bg-white dark:bg-slate-800 rounded border dark:border-slate-700 flex justify-between group hover:border-blue-500 mb-1">
-                                                                                    <div className="flex-1 cursor-pointer" onClick={() => { setFormData(p => ({...p, upsMake: u.make, upsModel: u.model, upsKva: ''})); setActiveTab('log'); }}>
+                                                                                    <div className="flex-1 cursor-pointer" onClick={() => { setFormData(p => ({ ...p, upsMake: u.make, upsModel: u.model, upsKva: '' })); setActiveTab('log'); }}>
                                                                                         <span className="text-xs font-bold">{u.model}</span> <span className="text-[10px] opacity-60 ml-2">{u.acV} AC / {u.dcV} DC</span>
                                                                                     </div>
                                                                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100">
-                                                                                        <button type="button" onClick={() => navigator.clipboard.writeText(`${u.make} ${u.model}`)} className="p-1 hover:bg-slate-100 rounded"><Copy size={12}/></button>
-                                                                                        <button type="button" onClick={(e) => handleEditUpsItem(e, u)} className="p-1 hover:bg-slate-100 rounded"><MoreHorizontal size={12}/></button>
-                                                                                        {u.id && <button type="button" onClick={(e) => handleDeleteLibItem(e, u, 'custom_ups_library')} className="p-1 text-red-500 hover:bg-red-50 rounded"><Trash2 size={12}/></button>}
+                                                                                        <button type="button" onClick={() => navigator.clipboard.writeText(`${u.make} ${u.model}`)} className="p-1 hover:bg-slate-100 rounded"><Copy size={12} /></button>
+                                                                                        <button type="button" onClick={(e) => handleEditUpsItem(e, u)} className="p-1 hover:bg-slate-100 rounded"><MoreHorizontal size={12} /></button>
+                                                                                        {u.id && <button type="button" onClick={(e) => handleDeleteLibItem(e, u, 'custom_ups_library')} className="p-1 text-red-500 hover:bg-red-50 rounded"><Trash2 size={12} /></button>}
                                                                                     </div>
                                                                                 </div>
                                                                             ))}
@@ -1121,7 +1191,7 @@
                                         <Card className="p-4">
                                             <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
                                                 <div className="flex items-center gap-4">
-                                                    <h3 className="font-bold text-xs uppercase opacity-50 flex items-center"><Archive size={14} className="mr-2"/> Archives</h3>
+                                                    <h3 className="font-bold text-xs uppercase opacity-50 flex items-center"><Archive size={14} className="mr-2" /> Archives</h3>
                                                     <div className="flex bg-slate-100 dark:bg-slate-800 rounded p-0.5">
                                                         <button type="button" onClick={() => setArchiveSubTab('recycling')} className={`px-3 py-1 text-xs font-bold rounded transition-all ${archiveSubTab === 'recycling' ? 'bg-white shadow text-black' : 'text-slate-400'}`}>Recycle Logs</button>
                                                         <button type="button" onClick={() => setArchiveSubTab('reports')} className={`px-3 py-1 text-xs font-bold rounded transition-all ${archiveSubTab === 'reports' ? 'bg-white shadow text-black' : 'text-slate-400'}`}>Service Reports</button>
@@ -1137,7 +1207,7 @@
                                                     )}
                                                 </div>
                                             </div>
-                                            
+
                                             {archiveSubTab === 'recycling' ? (
                                                 <>
                                                     <div className="flex gap-2 mb-4">
@@ -1146,18 +1216,18 @@
                                                         <button type="button" onClick={batchDelete} disabled={selectedLogIds.size === 0} className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 disabled:opacity-50">Delete</button>
                                                         <button type="button" onClick={() => setPrintMode(true)} disabled={selectedLogIds.size === 0} className="text-xs px-2 py-1 bg-slate-100 text-slate-700 rounded hover:bg-slate-200 disabled:opacity-50">Report</button>
                                                     </div>
-                                                    {Object.entries(groupedArchive).map(([k,v]) => (
+                                                    {Object.entries(groupedArchive).map(([k, v]) => (
                                                         <div key={k} className="border dark:border-slate-700 rounded-lg overflow-hidden mb-2">
                                                             <div className="p-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer" onClick={() => setExpandedFolders(p => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; })}>
                                                                 <div className="flex items-center gap-3">
-                                                                    <button type="button" onClick={(e) => { e.stopPropagation(); const ids = v.map(i=>i.id); setSelectedLogIds(p => { const n = new Set(p); const all = ids.every(x=>n.has(x)); ids.forEach(x => all ? n.delete(x) : n.add(x)); return n; }); }}>{v.every(i => selectedLogIds.has(i.id)) ? <CheckSquare size={16} className="text-emerald-500"/> : <Square size={16} className="text-slate-300"/>}</button>
+                                                                    <button type="button" onClick={(e) => { e.stopPropagation(); const ids = v.map(i => i.id); setSelectedLogIds(p => { const n = new Set(p); const all = ids.every(x => n.has(x)); ids.forEach(x => all ? n.delete(x) : n.add(x)); return n; }); }}>{v.every(i => selectedLogIds.has(i.id)) ? <CheckSquare size={16} className="text-emerald-500" /> : <Square size={16} className="text-slate-300" />}</button>
                                                                     <span className="font-bold text-sm">{k}</span>
                                                                 </div>
                                                                 <span className="text-[10px] opacity-50">{v.length} items</span>
                                                             </div>
                                                             {expandedFolders.has(k) && v.map((l, idx) => (
                                                                 <div key={l.id} className={`flex justify-between items-center px-10 py-2 border-t dark:border-slate-800 text-xs ${idx % 2 === 0 ? 'bg-slate-50 dark:bg-slate-900' : 'bg-white dark:bg-slate-800'}`}>
-                                                                    <div className="flex gap-3 items-center"><button type="button" onClick={() => setSelectedLogIds(p => { const n = new Set(p); n.has(l.id) ? n.delete(l.id) : n.add(l.id); return n; })}>{selectedLogIds.has(l.id) ? <CheckSquare size={14} className="text-emerald-500"/> : <Square size={14} className="text-slate-300"/>}</button><span><span className="font-bold">{l.manufacturer}</span> {l.batteryModel}</span></div>
+                                                                    <div className="flex gap-3 items-center"><button type="button" onClick={() => setSelectedLogIds(p => { const n = new Set(p); n.has(l.id) ? n.delete(l.id) : n.add(l.id); return n; })}>{selectedLogIds.has(l.id) ? <CheckSquare size={14} className="text-emerald-500" /> : <Square size={14} className="text-slate-300" />}</button><span><span className="font-bold">{l.manufacturer}</span> {l.batteryModel}</span></div>
                                                                     <div className="flex gap-3"><span className="font-mono opacity-50">{l.weight} lbs</span><button type="button" onClick={() => toggleArchive(l.id, true)} className="text-emerald-500 hover:underline font-bold">Restore</button></div>
                                                                 </div>
                                                             ))}
@@ -1178,7 +1248,7 @@
                                                                     <div className="flex gap-2">
                                                                         <button type="button" onClick={() => startPM(r)} className="text-[10px] px-2 py-1 border rounded hover:bg-blue-50 text-blue-600">Start PM</button>
                                                                         <button type="button" onClick={() => openReportForEdit(r)} className="text-[10px] px-2 py-1 border rounded hover:bg-slate-100">Edit</button>
-                                                                        <button type="button" onClick={(e) => deleteServiceReport(e, r.id)} className="text-[10px] px-2 py-1 border rounded hover:bg-red-50 text-red-500 cursor-pointer z-50"><Trash2 size={12}/></button>
+                                                                        <button type="button" onClick={(e) => deleteServiceReport(e, r.id)} className="text-[10px] px-2 py-1 border rounded hover:bg-red-50 text-red-500 cursor-pointer z-50"><Trash2 size={12} /></button>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1213,40 +1283,40 @@
                                         <div className="grid md:grid-cols-2 gap-8 mb-8">
                                             <div className="space-y-4">
                                                 <label className="text-xs font-bold block opacity-60">Company Name</label>
-                                                <input value={appSettings.companyName} onChange={e => setAppSettings({...appSettings, companyName: e.target.value})} className="w-full p-3 rounded-lg border dark:bg-slate-900 dark:border-slate-700" />
+                                                <input value={appSettings.companyName} onChange={e => setAppSettings({ ...appSettings, companyName: e.target.value })} className="w-full p-3 rounded-lg border dark:bg-slate-900 dark:border-slate-700" />
                                                 <label className="text-xs font-bold block opacity-60">Logo URL</label>
-                                                <input value={appSettings.logoUrl} onChange={e => setAppSettings({...appSettings, logoUrl: e.target.value})} className="w-full p-3 rounded-lg border dark:bg-slate-900 dark:border-slate-700" />
+                                                <input value={appSettings.logoUrl} onChange={e => setAppSettings({ ...appSettings, logoUrl: e.target.value })} className="w-full p-3 rounded-lg border dark:bg-slate-900 dark:border-slate-700" />
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="flex items-center justify-between p-3 border rounded-lg dark:border-slate-700">
                                                     <span className="text-sm font-bold">Track Dates (Install/Exp)</span>
-                                                    <button type="button" onClick={() => setAppSettings(p => ({...p, showDates: !p.showDates}))} className={`w-10 h-6 rounded-full p-1 transition-colors ${appSettings.showDates ? 'bg-emerald-500' : 'bg-slate-300'}`}><div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform ${appSettings.showDates ? 'translate-x-4' : ''}`}></div></button>
+                                                    <button type="button" onClick={() => setAppSettings(p => ({ ...p, showDates: !p.showDates }))} className={`w-10 h-6 rounded-full p-1 transition-colors ${appSettings.showDates ? 'bg-emerald-500' : 'bg-slate-300'}`}><div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform ${appSettings.showDates ? 'translate-x-4' : ''}`}></div></button>
                                                 </div>
                                                 <div className="flex items-center justify-between p-3 border rounded-lg dark:border-slate-700">
                                                     <span className="text-sm font-bold">Show Logo on Report</span>
-                                                    <button type="button" onClick={() => setAppSettings(p => ({...p, reportLogo: !p.reportLogo}))} className={`w-10 h-6 rounded-full p-1 transition-colors ${appSettings.reportLogo ? 'bg-emerald-500' : 'bg-slate-300'}`}><div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform ${appSettings.reportLogo ? 'translate-x-4' : ''}`}></div></button>
+                                                    <button type="button" onClick={() => setAppSettings(p => ({ ...p, reportLogo: !p.reportLogo }))} className={`w-10 h-6 rounded-full p-1 transition-colors ${appSettings.reportLogo ? 'bg-emerald-500' : 'bg-slate-300'}`}><div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform ${appSettings.reportLogo ? 'translate-x-4' : ''}`}></div></button>
                                                 </div>
                                                 <div className="flex items-center justify-between p-3 border rounded-lg dark:border-slate-700">
                                                     <span className="text-sm font-bold">Invert Logo on Print</span>
-                                                    <button type="button" onClick={() => setAppSettings(p => ({...p, invertLogoPrint: !p.invertLogoPrint}))} className={`w-10 h-6 rounded-full p-1 transition-colors ${appSettings.invertLogoPrint ? 'bg-emerald-500' : 'bg-slate-300'}`}><div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform ${appSettings.invertLogoPrint ? 'translate-x-4' : ''}`}></div></button>
+                                                    <button type="button" onClick={() => setAppSettings(p => ({ ...p, invertLogoPrint: !p.invertLogoPrint }))} className={`w-10 h-6 rounded-full p-1 transition-colors ${appSettings.invertLogoPrint ? 'bg-emerald-500' : 'bg-slate-300'}`}><div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform ${appSettings.invertLogoPrint ? 'translate-x-4' : ''}`}></div></button>
                                                 </div>
                                                 <div className="flex items-center justify-between p-3 border rounded-lg dark:border-slate-700">
                                                     <span className="text-sm font-bold">Show Safety Protocols</span>
-                                                    <button type="button" onClick={() => setAppSettings(p => ({...p, showProtocols: !p.showProtocols}))} className={`w-10 h-6 rounded-full p-1 transition-colors ${appSettings.showProtocols ? 'bg-emerald-500' : 'bg-slate-300'}`}><div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform ${appSettings.showProtocols ? 'translate-x-4' : ''}`}></div></button>
+                                                    <button type="button" onClick={() => setAppSettings(p => ({ ...p, showProtocols: !p.showProtocols }))} className={`w-10 h-6 rounded-full p-1 transition-colors ${appSettings.showProtocols ? 'bg-emerald-500' : 'bg-slate-300'}`}><div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform ${appSettings.showProtocols ? 'translate-x-4' : ''}`}></div></button>
                                                 </div>
                                                 <div className="flex items-center justify-between p-3 border rounded-lg dark:border-slate-700">
                                                     <span className="text-sm font-bold">Report Header: Customer</span>
-                                                    <button type="button" onClick={() => setAppSettings(p => ({...p, reportUseCustomerName: !p.reportUseCustomerName}))} className={`w-10 h-6 rounded-full p-1 transition-colors ${appSettings.reportUseCustomerName ? 'bg-emerald-500' : 'bg-slate-300'}`}><div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform ${appSettings.reportUseCustomerName ? 'translate-x-4' : ''}`}></div></button>
+                                                    <button type="button" onClick={() => setAppSettings(p => ({ ...p, reportUseCustomerName: !p.reportUseCustomerName }))} className={`w-10 h-6 rounded-full p-1 transition-colors ${appSettings.reportUseCustomerName ? 'bg-emerald-500' : 'bg-slate-300'}`}><div className={`w-4 h-4 bg-white rounded-full shadow-md transition-transform ${appSettings.reportUseCustomerName ? 'translate-x-4' : ''}`}></div></button>
                                                 </div>
                                                 <div className="pt-2"><span className="text-xs font-bold opacity-60 block mb-2">Accent Color</span>
-                                                    <div className="flex gap-2">{Object.keys(THEMES).map(c => <button type="button" key={c} onClick={() => setAppSettings({...appSettings, themeColor: c})} className={`w-8 h-8 rounded-full border-2 ${c === 'emerald' ? 'bg-emerald-500' : c === 'blue' ? 'bg-blue-500' : c === 'violet' ? 'bg-violet-500' : 'bg-slate-600'} ${appSettings.themeColor === c ? 'border-white ring-2 ring-slate-400' : 'border-transparent'}`} />)}</div>
+                                                    <div className="flex gap-2">{Object.keys(THEMES).map(c => <button type="button" key={c} onClick={() => setAppSettings({ ...appSettings, themeColor: c })} className={`w-8 h-8 rounded-full border-2 ${c === 'emerald' ? 'bg-emerald-500' : c === 'blue' ? 'bg-blue-500' : c === 'violet' ? 'bg-violet-500' : 'bg-slate-600'} ${appSettings.themeColor === c ? 'border-white ring-2 ring-slate-400' : 'border-transparent'}`} />)}</div>
                                                 </div>
                                             </div>
                                         </div>
                                         <button onClick={saveSettings} className={`px-8 py-3 rounded-xl font-bold text-white shadow-lg transition-transform hover:scale-105 ${theme.primary}`}>Save All Changes</button>
-                                        
+
                                         <div className="mt-8 pt-6 border-t dark:border-slate-700">
-                                            <h3 className="font-bold text-red-500 text-sm uppercase mb-4 flex items-center"><AlertTriangle className="mr-2" size={16}/> Danger Zone</h3>
+                                            <h3 className="font-bold text-red-500 text-sm uppercase mb-4 flex items-center"><AlertTriangle className="mr-2" size={16} /> Danger Zone</h3>
                                             <div className="flex gap-4">
                                                 <button type="button" onClick={clearRecycleLogs} className="px-4 py-2 border border-red-500 text-red-500 rounded text-xs font-bold hover:bg-red-50 dark:hover:bg-red-900/20">Clear Recycling Logs</button>
                                                 <button type="button" onClick={clearServiceReports} className="px-4 py-2 border border-red-500 text-red-500 rounded text-xs font-bold hover:bg-red-50 dark:hover:bg-red-900/20">Clear Service Reports</button>
@@ -1258,7 +1328,7 @@
                                             <p className="font-bold text-slate-500 text-xs uppercase tracking-wider mb-2">About</p>
                                             <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">CTRL Inc.</h3>
                                             <p className="text-xs text-slate-400">Battery Recycling Management System v1.14.1</p>
-                                            
+
                                             <div className="mt-6 flex justify-center gap-8">
                                                 <div className="text-center">
                                                     <p className="text-2xl font-bold text-emerald-500">{Math.round(allTimeStats.weight).toLocaleString()}</p>
@@ -1278,12 +1348,12 @@
                             <div className="space-y-6">
                                 {appSettings.showProtocols && (
                                     <Card className="p-6 bg-slate-900 text-slate-100 border-none relative overflow-hidden group">
-                                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><AlertTriangle size={80}/></div>
-                                        <h3 className="font-bold mb-4 flex items-center border-b border-slate-700 pb-3"><ShieldCheck className="mr-2 text-emerald-400" size={18}/> Safety Protocols</h3>
+                                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><AlertTriangle size={80} /></div>
+                                        <h3 className="font-bold mb-4 flex items-center border-b border-slate-700 pb-3"><ShieldCheck className="mr-2 text-emerald-400" size={18} /> Safety Protocols</h3>
                                         <ul className="text-xs space-y-3 font-medium opacity-90 relative z-10">
-                                            <li className="flex gap-3 items-start"><Box size={14} className="mt-0.5 shrink-0 text-slate-400"/><span><strong>Wet Cells:</strong> Keep upright. High acid risk.</span></li>
-                                            <li className="flex gap-3 items-start"><Scale size={14} className="mt-0.5 shrink-0 text-slate-400"/><span><strong>Heavy Loads:</strong> Team lift &gt;50lbs.</span></li>
-                                            <li className="flex gap-3 items-start"><Zap size={14} className="mt-0.5 shrink-0 text-slate-400"/><span><strong>Lithium:</strong> Tape terminals. Fire risk.</span></li>
+                                            <li className="flex gap-3 items-start"><Box size={14} className="mt-0.5 shrink-0 text-slate-400" /><span><strong>Wet Cells:</strong> Keep upright. High acid risk.</span></li>
+                                            <li className="flex gap-3 items-start"><Scale size={14} className="mt-0.5 shrink-0 text-slate-400" /><span><strong>Heavy Loads:</strong> Team lift &gt;50lbs.</span></li>
+                                            <li className="flex gap-3 items-start"><Zap size={14} className="mt-0.5 shrink-0 text-slate-400" /><span><strong>Lithium:</strong> Tape terminals. Fire risk.</span></li>
                                         </ul>
                                     </Card>
                                 )}
@@ -1291,16 +1361,16 @@
 
                         </div>
                     </div>
-                    
+
                     {/* Mobile Bottom Nav */}
                     <div className="md:hidden fixed bottom-0 w-full bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-2 flex justify-around z-50">
                         {['dashboard', 'log', 'database', 'archives', 'settings'].map(t => (
                             <button key={t} onClick={() => setActiveTab(t)} className={`p-2 rounded-xl flex flex-col items-center ${activeTab === t ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
-                                {t==='dashboard' && <BarChart3 size={20}/>}
-                                {t==='log' && <Plus size={20}/>}
-                                {t==='database' && <Database size={20}/>}
-                                {t==='archives' && <Archive size={20}/>}
-                                {t==='settings' && <Settings size={20}/>}
+                                {t === 'dashboard' && <BarChart3 size={20} />}
+                                {t === 'log' && <Plus size={20} />}
+                                {t === 'database' && <Database size={20} />}
+                                {t === 'archives' && <Archive size={20} />}
+                                {t === 'settings' && <Settings size={20} />}
                                 <span className="text-[10px] font-bold capitalize mt-1">{t}</span>
                             </button>
                         ))}
@@ -1313,5 +1383,5 @@
         root.render(<App />);
     </script>
 </body>
-</html>
 
+</html>

@@ -1,0 +1,23 @@
+{
+    "name": "BatteryCycle Track",
+    "short_name": "BatteryCycle",
+    "description": "Battery Recycling Management & PM Tracking System",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#10b981",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "BatteryRecyclecool.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "BatteryRecycle.ico",
+            "sizes": "256x256",
+            "type": "image/x-icon"
+        }
+    ]
+}
