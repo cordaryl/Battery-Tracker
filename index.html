@@ -96,17 +96,20 @@
             tr.zebra-row-odd {
                 background-color: #f9fafb !important;
                 -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
 
             tr.zebra-row-even {
                 background-color: #ffffff !important;
                 -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
 
             .group-header {
                 background-color: #e5e7eb !important;
                 font-weight: bold;
                 -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
                 border: 1px solid #000;
                 display: flex;
                 justify-content: space-between;
@@ -326,6 +329,35 @@
                 upsMake: '', upsModel: '', upsSerial: '', upsKva: ''
             });
 
+            // Feedback & Versioning
+            const [bugReports, setBugReports] = useState([]);
+            const [featureRequests, setFeatureRequests] = useState([]);
+            const [showChangeLog, setShowChangeLog] = useState(false);
+            const [feedbackTab, setFeedbackTab] = useState(null); // 'bug' | 'feature' | 'bugManager' | 'featureManager'
+
+            const APP_VERSION = 'v1.15.0';
+            const CHANGELOG = [
+                {
+                    version: '1.15.0',
+                    date: '2026-02-03',
+                    changes: [
+                        'Upgraded Babel to v7.26.0 for improved compatibility.',
+                        'Added PWA support with custom app icon.',
+                        'Implemented clickable version history and change log.',
+                        'Added Bug Reporting and Feature Request system in Settings.',
+                        'Refined mobile install experience for iOS and Android.'
+                    ]
+                },
+                {
+                    version: '1.14.1',
+                    date: '2025-01-20',
+                    changes: [
+                        'Fixed layout issues in PM reports.',
+                        'Added battery indicators to the dashboard.'
+                    ]
+                }
+            ];
+
             const theme = THEMES[appSettings.themeColor] || THEMES.emerald;
 
             // 2. DERIVED DATA
@@ -463,9 +495,13 @@
                 const unsubLib = onSnapshot(collection(db, 'custom_library'), s => setCustomLibrary(s.docs.map(d => ({ id: d.id, ...d.data() }))));
                 const unsubUpsLib = onSnapshot(collection(db, 'custom_ups_library'), s => setCustomUpsLibrary(s.docs.map(d => ({ id: d.id, ...d.data() }))));
                 const unsubSrc = onSnapshot(collection(db, 'saved_sources'), s => setSavedSources(s.docs.map(d => String(d.data().name))));
+
+                const unsubBugs = onSnapshot(collection(db, 'bug_reports'), s => setBugReports(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))));
+                const unsubFeats = onSnapshot(collection(db, 'feature_requests'), s => setFeatureRequests(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))));
+
                 getDoc(doc(db, 'settings', 'global_config')).then(s => s.exists() && setAppSettings(prev => ({ ...prev, ...s.data() })));
                 setLoading(false);
-                return () => { unsubLogs(); unsubReports(); unsubLib(); unsubUpsLib(); unsubSrc(); };
+                return () => { unsubLogs(); unsubReports(); unsubLib(); unsubUpsLib(); unsubSrc(); unsubBugs(); unsubFeats(); };
             }, [user]);
 
             useEffect(() => {
@@ -772,6 +808,24 @@
                     console.error("Delete failed", err);
                     alert("Failed to delete report.");
                 }
+            };
+
+            const submitFeedback = async (type, data) => {
+                const col = type === 'bug' ? 'bug_reports' : 'feature_requests';
+                await addDoc(collection(db, col), { ...data, status: 'Open', createdAt: serverTimestamp(), user: user.uid || 'anon' });
+                alert(`${type === 'bug' ? 'Bug reported' : 'Feature requested'}! Thanks.`);
+                setFeedbackTab(null);
+            };
+
+            const updateFeedbackStatus = async (type, id, status) => {
+                const col = type === 'bug' ? 'bug_reports' : 'feature_requests';
+                await updateDoc(doc(db, col, id), { status });
+            };
+
+            const deleteFeedback = async (type, id) => {
+                if (!confirm("Delete this?")) return;
+                const col = type === 'bug' ? 'bug_reports' : 'feature_requests';
+                await deleteDoc(doc(db, col, id));
             };
 
             if (loading) return <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-400"><Loader2 className="animate-spin mr-2" /> Loading...</div>;
@@ -1327,7 +1381,14 @@
                                         <div className="mt-12 pt-8 border-t dark:border-slate-700 text-center">
                                             <p className="font-bold text-slate-500 text-xs uppercase tracking-wider mb-2">About</p>
                                             <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300">CTRL Inc.</h3>
-                                            <p className="text-xs text-slate-400">Battery Recycling Management System v1.14.1</p>
+                                            <button type="button" onClick={() => setShowChangeLog(true)} className="text-xs text-slate-400 hover:text-emerald-500 transition-colors font-mono">Battery Recycling Management System {APP_VERSION}</button>
+
+                                            <div className="mt-4 flex flex-wrap justify-center gap-2">
+                                                <button type="button" onClick={() => setFeedbackTab('bug')} className="text-[10px] px-3 py-1 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-full font-bold">Report Bug</button>
+                                                <button type="button" onClick={() => setFeedbackTab('feature')} className="text-[10px] px-3 py-1 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-full font-bold">Request Feature</button>
+                                                <button type="button" onClick={() => setFeedbackTab('bugManager')} className="text-[10px] px-3 py-1 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 rounded-full font-bold">Manage Bugs</button>
+                                                <button type="button" onClick={() => setFeedbackTab('featureManager')} className="text-[10px] px-3 py-1 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 rounded-full font-bold">Manage Features</button>
+                                            </div>
 
                                             <div className="mt-6 flex justify-center gap-8">
                                                 <div className="text-center">
@@ -1375,6 +1436,74 @@
                             </button>
                         ))}
                     </div>
+
+                    {/* MODALS */}
+                    {showChangeLog && (
+                        <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+                            <Card className="max-w-md w-full max-h-[80vh] flex flex-col">
+                                <div className="p-4 border-b flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+                                    <h3 className="font-bold">Change Log</h3>
+                                    <button onClick={() => setShowChangeLog(false)}><X /></button>
+                                </div>
+                                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                                    {CHANGELOG.map(entry => (
+                                        <div key={entry.version} className="border-l-2 border-emerald-500 pl-4 py-1">
+                                            <div className="flex justify-between items-end mb-2">
+                                                <h4 className="font-bold text-lg text-emerald-600">{entry.version}</h4>
+                                                <span className="text-xs opacity-50">{entry.date}</span>
+                                            </div>
+                                            <ul className="text-sm space-y-1 opacity-80 list-disc list-inside">
+                                                {entry.changes.map((c, i) => <li key={i}>{c}</li>)}
+                                            </ul>
+                                        </div>
+                                    ))}
+                                </div>
+                            </Card>
+                        </div>
+                    )}
+
+                    {feedbackTab && (
+                        <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+                            <Card className="max-w-2xl w-full max-h-[90vh] flex flex-col">
+                                <div className="p-4 border-b flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+                                    <h3 className="font-bold capitalize">{feedbackTab.replace('Manager', ' Management')}</h3>
+                                    <button onClick={() => setFeedbackTab(null)}><X /></button>
+                                </div>
+                                <div className="flex-1 overflow-y-auto p-6">
+                                    {(feedbackTab === 'bug' || feedbackTab === 'feature') ? (
+                                        <form onSubmit={(e) => {
+                                            e.preventDefault();
+                                            const title = e.target.title.value;
+                                            const desc = e.target.desc.value;
+                                            if (!title) return;
+                                            submitFeedback(feedbackTab, { title, desc });
+                                        }} className="space-y-4">
+                                            <div><label className="text-xs font-bold block mb-1">Title</label><input name="title" required className="w-full p-3 rounded-lg border dark:bg-slate-900" placeholder={feedbackTab === 'bug' ? "What went wrong?" : "What would you like to see?"} /></div>
+                                            <div><label className="text-xs font-bold block mb-1">Details</label><textarea name="desc" rows="4" className="w-full p-3 rounded-lg border dark:bg-slate-900" placeholder="Please provide more context..."></textarea></div>
+                                            <button type="submit" className={`w-full py-3 rounded-xl font-bold text-white shadow-lg ${feedbackTab === 'bug' ? 'bg-red-500' : 'bg-blue-500'}`}>Submit {feedbackTab === 'bug' ? 'Bug Report' : 'Feature Request'}</button>
+                                        </form>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {(feedbackTab === 'bugManager' ? bugReports : featureRequests).map(item => (
+                                                <div key={item.id} className="p-4 border rounded-lg dark:bg-slate-900 space-y-2 relative group">
+                                                    <div className="flex justify-between items-start">
+                                                        <div><span className={`text-[10px] px-2 py-0.5 rounded flex-shrink-0 font-bold uppercase mr-2 ${item.status === 'Open' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>{item.status}</span><span className="font-bold">{item.title}</span></div>
+                                                        <div className="flex gap-2">
+                                                            <button onClick={() => updateFeedbackStatus(feedbackTab.replace('Manager', ''), item.id, item.status === 'Open' ? 'Closed' : 'Open')} className="text-[10px] font-bold underline opacity-50 hover:opacity-100">{item.status === 'Open' ? 'Close' : 'Reopen'}</button>
+                                                            <button onClick={() => deleteFeedback(feedbackTab.replace('Manager', ''), item.id)} className="text-red-500 opacity-50 hover:opacity-100"><Trash2 size={14} /></button>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-sm opacity-70 italic">{item.desc}</p>
+                                                    <p className="text-[10px] opacity-40">{item.createdAt?.toDate ? item.createdAt.toDate().toLocaleString() : 'Recently added'}</p>
+                                                </div>
+                                            ))}
+                                            {(feedbackTab === 'bugManager' ? bugReports : featureRequests).length === 0 && <p className="text-center opacity-50 py-10">No entries yet.</p>}
+                                        </div>
+                                    )}
+                                </div>
+                            </Card>
+                        </div>
+                    )}
                 </div>
             );
         }
