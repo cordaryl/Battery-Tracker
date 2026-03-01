@@ -887,6 +887,7 @@
                     alert(`Split into ${splitCount} new entries successfully.`);
                     setSplitTarget(null);
                     setExpandedLogs(new Set());
+                    setSelectedLogIds(prev => { const n = new Set(prev); n.delete(originalId); return n; });
                 } catch (error) {
                     console.error("Error splitting:", error);
                     alert("Failed to split entry.");
@@ -967,7 +968,8 @@
                     totalUnits,
                     items: bolItems.map(i => ({ manufacturer: i.manufacturer, model: i.batteryModel, weight: i.weight, count: i.count, location: i.location })),
                     createdAt: serverTimestamp(),
-                    user: user.uid || 'anon'
+                    user: user.uid || 'anon',
+                    type: 'bol'
                 };
 
                 try {
@@ -1002,11 +1004,17 @@
                 let isServiceReport = false;
 
                 if (currentPrintReport) {
-                    if (selectedReportItemIds.size > 0) itemsToPrint = currentPrintReport.items.filter(i => selectedReportItemIds.has(i.id));
-                    else itemsToPrint = currentPrintReport.items;
-                    title = currentPrintReport.customer;
-                    subHeader = `${printDisplayOptions.source ? (currentPrintReport.site || '') + ' - ' : ''}${currentPrintReport.dateStr}`;
-                    isServiceReport = true;
+                    if (currentPrintReport.type === 'bol') {
+                        itemsToPrint = currentPrintReport.items || [];
+                        title = "Bill of Lading";
+                        subHeader = `Generated: ${currentPrintReport.dateStr} | Driver: ${currentPrintReport.driver}`;
+                    } else {
+                        if (selectedReportItemIds.size > 0) itemsToPrint = currentPrintReport.items.filter(i => selectedReportItemIds.has(i.id));
+                        else itemsToPrint = currentPrintReport.items;
+                        title = currentPrintReport.customer;
+                        subHeader = `${printDisplayOptions.source ? (currentPrintReport.site || '') + ' - ' : ''}${currentPrintReport.dateStr}`;
+                        isServiceReport = true;
+                    }
                 } else if (activeTab === 'archives' && archiveSubTab === 'reports') {
                     const allServiceItems = serviceReports.flatMap(r => r.items.map(i => ({ ...i, reportId: r.id, reportCustomer: r.customer, reportSite: r.site })));
                     itemsToPrint = allServiceItems.filter(i => selectedReportItemIds.has(i.id));
@@ -1123,6 +1131,15 @@
                                         ))}
                                     </div>
                                 ))}
+
+                                {currentPrintReport?.type === 'bol' && currentPrintReport.signature && (
+                                    <div className="mt-12 pt-8 border-t-2 border-slate-300 flex flex-col items-center max-w-sm mx-auto">
+                                        <p className="font-bold text-sm uppercase opacity-50 mb-2">Authorized Signature</p>
+                                        <img src={currentPrintReport.signature} alt="Signature" className="h-24 w-auto object-contain bg-white rounded border border-slate-200" />
+                                        <p className="font-bold text-lg mt-2">{currentPrintReport.driver}</p>
+                                        <p className="text-xs text-slate-500">{currentPrintReport.dateStr}</p>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -1539,6 +1556,7 @@
                                                                 <div className="text-right">
                                                                     <p className="font-mono font-bold text-lg">{b.totalWeight} lbs</p>
                                                                     <p className="text-xs opacity-60">{b.totalUnits} Units Total</p>
+                                                                    <button type="button" onClick={() => { setCurrentPrintReport({ ...b, type: 'bol' }); setPrintMode(true); }} className="mt-2 text-[10px] px-3 py-1.5 bg-purple-100 text-purple-700 hover:bg-purple-200 font-bold rounded flex items-center justify-end w-full"><Printer size={12} className="mr-1" /> Print BOL</button>
                                                                 </div>
                                                             </div>
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t dark:border-slate-700 pt-4">
