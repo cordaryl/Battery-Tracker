@@ -907,10 +907,14 @@
                 const canvas = sigCanvasRef.current;
                 const ctx = canvas.getContext('2d');
                 const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
                 const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                 const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const x = (clientX - rect.left) * scaleX;
+                const y = (clientY - rect.top) * scaleY;
                 ctx.beginPath();
-                ctx.moveTo(clientX - rect.left, clientY - rect.top);
+                ctx.moveTo(x, y);
                 setIsDrawing(true);
             };
 
@@ -920,9 +924,13 @@
                 const canvas = sigCanvasRef.current;
                 const ctx = canvas.getContext('2d');
                 const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
                 const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                 const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                ctx.lineTo(clientX - rect.left, clientY - rect.top);
+                const x = (clientX - rect.left) * scaleX;
+                const y = (clientY - rect.top) * scaleY;
+                ctx.lineTo(x, y);
                 ctx.stroke();
             };
 
