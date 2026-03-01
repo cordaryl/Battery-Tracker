@@ -336,6 +336,7 @@
             const [splitTarget, setSplitTarget] = useState(null);
             const [splitCount, setSplitCount] = useState(2);
             const [splitName, setSplitName] = useState('Pallet');
+            const [splitAllocations, setSplitAllocations] = useState([]);
 
             const [editingId, setEditingId] = useState(null);
             const [formData, setFormData] = useState({
@@ -354,24 +355,22 @@
             const APP_VERSION = 'v1.16.0';
             const CHANGELOG = [
                 {
-                    version: '1.16.0',
+                    version: 'v1.16.0',
+                    date: 'March 2026',
+                    changes: [
+                        'Added custom interactive Split Allocations for uneven splits.',
+                        'Made BOL Print layouts fully editable prior to printing.',
+                        'Fixed split ghosting bug returning to dashboard view.'
+                    ]
+                },
+                {
+                    version: 'v1.15.0',
                     date: new Date().toISOString().split('T')[0],
                     changes: [
                         'Added bulk entry splitting (Palletization).',
                         'Added signable Bills of Lading (BOL) generation.',
                         'Added interactive expandable dashboard detail cards.',
                         'Organized extreme actions into a safe Danger Zone submenu.'
-                    ]
-                },
-                {
-                    version: '1.15.0',
-                    date: '2026-02-03',
-                    changes: [
-                        'Upgraded Babel to v7.26.0 for improved compatibility.',
-                        'Added PWA support with custom app icon.',
-                        'Implemented clickable version history and change log.',
-                        'Added Bug Reporting and Feature Request system in Settings.',
-                        'Refined mobile install experience for iOS and Android.'
                     ]
                 },
                 {
@@ -548,6 +547,31 @@
                     }
                 }
             }, [formData.installDate, formData.expectedLife]);
+
+            useEffect(() => {
+                if (activeTab === 'dashboard') {
+                    setExpandedLogs(new Set()); // Collapse all logs when returning to dashboard
+                }
+            }, [activeTab]);
+
+            useEffect(() => {
+                if (splitTarget) {
+                    const baseWeight = (splitTarget.weight / splitCount);
+                    const baseCount = Math.floor(splitTarget.count / splitCount);
+                    const allocs = Array(splitCount).fill(0).map(() => ({
+                        count: baseCount,
+                        weight: Number(baseWeight.toFixed(1))
+                    }));
+
+                    const totalBaseCount = baseCount * splitCount;
+                    if (totalBaseCount < splitTarget.count && allocs.length > 0) {
+                        allocs[allocs.length - 1].count += (splitTarget.count - totalBaseCount);
+                    }
+                    setSplitAllocations(allocs);
+                } else {
+                    setSplitAllocations([]);
+                }
+            }, [splitTarget, splitCount]);
 
             // Handlers
             const saveRecord = async (e) => {
@@ -862,17 +886,20 @@
                 const batch = writeBatch(db);
                 const originalId = splitTarget.id;
 
-                const newTotalWeight = Number((splitTarget.weight / splitCount).toFixed(1));
-                const newUnitCount = Math.floor(splitTarget.count / splitCount);
+                const totalC = splitAllocations.reduce((a, b) => a + b.count, 0);
+                const totalW = splitAllocations.reduce((a, b) => a + b.weight, 0);
+                if (totalC !== Number(splitTarget.count)) { alert("Allocated units must exactly match the original item's units."); return; }
+                if (Math.abs(totalW - Number(splitTarget.weight)) > 1) { alert("Allocated weight must closely match the original item's weight."); return; }
 
                 const getLabel = (idx) => splitName + ' ' + String.fromCharCode(65 + idx);
 
                 for (let i = 0; i < splitCount; i++) {
+                    const alloc = splitAllocations[i];
                     const newRef = doc(collection(db, 'recycling_logs'));
                     const newData = {
                         ...splitTarget,
-                        weight: newTotalWeight,
-                        count: newUnitCount,
+                        weight: Number(alloc.weight),
+                        count: Number(alloc.count),
                         location: getLabel(i),
                         createdAt: serverTimestamp()
                     };
@@ -1065,7 +1092,7 @@
                     const u = Number(uStr) || 0;
                     return { countNum: c, countStr: cStr, unitNum: u, unitStr: uStr, weightNum: c * u };
                 };
-                
+
                 const groupNameOverride = (type, original) => printOverrides[`group-${type}-${original}`] !== undefined ? printOverrides[`group-${type}-${original}`] : original;
                 const setGroupNameOverride = (type, original, val) => setPrintOverrides(p => ({ ...p, [`group-${type}-${original}`]: val }));
 
@@ -1131,15 +1158,16 @@
                                                             <tbody>{items.map((l, idx) => {
                                                                 const drv = getDerived(l);
                                                                 return (
-                                                                 <tr key={l.id || idx} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50 zebra-row-odd'}`}>
-                                                                    <td className="py-1 flex gap-1"><input value={printOverrides[`${l.id}-mfg`] ?? l.manufacturer} onChange={e => setPrintOverrides(p => ({ ...p, [`${l.id}-mfg`]: e.target.value }))} className="bg-transparent border-none outline-none font-bold w-1/3 p-0" /><input value={printOverrides[`${l.id}-model`] ?? (l.batteryModel || l.model)} onChange={e => setPrintOverrides(p => ({ ...p, [`${l.id}-model`]: e.target.value }))} className="bg-transparent border-none outline-none w-2/3 p-0" /></td>
-                                                                    {appSettings.showDates && <td className="py-1 text-xs">{formatDate(l.installDate) || '-'} / {formatDate(l.expiryDate) || '-'}</td>}
-                                                                    <td className="py-1 text-right"><input type="number" step="0.1" value={drv.unitStr} onChange={e => setPrintOverrides(p => ({ ...p, [`${l.id}-unit`]: e.target.value }))} className="bg-transparent text-right border-none outline-none w-full p-0" placeholder="0" /></td>
-                                                                    <td className="py-1 text-right font-bold"><input type="number" value={drv.countStr} onChange={e => setPrintOverrides(p => ({ ...p, [`${l.id}-count`]: e.target.value }))} className="bg-transparent font-bold text-right border-none outline-none w-full p-0" placeholder="0" /></td>
-                                                                    <td className="py-1 text-right font-mono text-emerald-700">{drv.weightNum.toFixed(1)}</td>
-                                                                    <td className="py-1 text-xs italic"><input value={printOverrides[`${l.id}-notes`] ?? (l.notes || '')} onChange={e => setPrintOverrides(p => ({ ...p, [`${l.id}-notes`]: e.target.value }))} className="bg-transparent italic border-none outline-none w-full p-0" placeholder="Notes..." /></td>
-                                                                </tr>
-                                                            )})}</tbody>
+                                                                    <tr key={l.id || idx} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50 zebra-row-odd'}`}>
+                                                                        <td className="py-1 flex gap-1"><input value={printOverrides[`${l.id}-mfg`] ?? l.manufacturer} onChange={e => setPrintOverrides(p => ({ ...p, [`${l.id}-mfg`]: e.target.value }))} className="bg-transparent border-none outline-none font-bold w-1/3 p-0" /><input value={printOverrides[`${l.id}-model`] ?? (l.batteryModel || l.model)} onChange={e => setPrintOverrides(p => ({ ...p, [`${l.id}-model`]: e.target.value }))} className="bg-transparent border-none outline-none w-2/3 p-0" /></td>
+                                                                        {appSettings.showDates && <td className="py-1 text-xs">{formatDate(l.installDate) || '-'} / {formatDate(l.expiryDate) || '-'}</td>}
+                                                                        <td className="py-1 text-right"><input type="number" step="0.1" value={drv.unitStr} onChange={e => setPrintOverrides(p => ({ ...p, [`${l.id}-unit`]: e.target.value }))} className="bg-transparent text-right border-none outline-none w-full p-0" placeholder="0" /></td>
+                                                                        <td className="py-1 text-right font-bold"><input type="number" value={drv.countStr} onChange={e => setPrintOverrides(p => ({ ...p, [`${l.id}-count`]: e.target.value }))} className="bg-transparent font-bold text-right border-none outline-none w-full p-0" placeholder="0" /></td>
+                                                                        <td className="py-1 text-right font-mono text-emerald-700">{drv.weightNum.toFixed(1)}</td>
+                                                                        <td className="py-1 text-xs italic"><input value={printOverrides[`${l.id}-notes`] ?? (l.notes || '')} onChange={e => setPrintOverrides(p => ({ ...p, [`${l.id}-notes`]: e.target.value }))} className="bg-transparent italic border-none outline-none w-full p-0" placeholder="Notes..." /></td>
+                                                                    </tr>
+                                                                )
+                                                            })}</tbody>
                                                         </table>
                                                     </div>
                                                 ))}
@@ -1802,13 +1830,23 @@
 
                                     <div>
                                         <label className="text-xs font-bold block mb-1">Naming Base (e.g. Pallet)</label>
-                                        <p className="text-[10px] opacity-60 mb-2">Will result in: <strong>{splitName} A</strong>, <strong>{splitName} B</strong>, etc.</p>
                                         <input type="text" value={splitName} onChange={e => setSplitName(e.target.value)} className="w-full p-3 rounded-lg border dark:bg-slate-900" required />
                                     </div>
 
+                                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                                        <p className="text-xs font-bold opacity-60">Individual Allocations</p>
+                                        {splitAllocations.map((alloc, idx) => (
+                                            <div key={idx} className="flex gap-2 items-center bg-slate-50 dark:bg-slate-900 border dark:border-slate-800 p-2 rounded-lg">
+                                                <span className="text-xs font-bold w-20 truncate" title={`${splitName} ${String.fromCharCode(65 + idx)}`}>{splitName} {String.fromCharCode(65 + idx)}</span>
+                                                <input type="number" min="0" value={alloc.count} onChange={e => { const n = [...splitAllocations]; n[idx].count = Number(e.target.value); setSplitAllocations(n); }} className="w-full p-2 text-xs border rounded outline-none bg-white dark:bg-slate-800" placeholder="Units" />
+                                                <input type="number" step="0.1" min="0" value={alloc.weight} onChange={e => { const n = [...splitAllocations]; n[idx].weight = Number(e.target.value); setSplitAllocations(n); }} className="w-full p-2 text-xs border rounded outline-none bg-white dark:bg-slate-800" placeholder="Lbs" />
+                                            </div>
+                                        ))}
+                                    </div>
+
                                     <div className="grid grid-cols-2 gap-4 bg-purple-50 dark:bg-purple-900/20 p-3 rounded border border-purple-100 dark:border-purple-800">
-                                        <div><span className="text-[10px] font-bold uppercase opacity-60 block">New Units/Pallet</span><span className="font-mono text-lg font-bold">{Math.floor(splitTarget.count / splitCount)}</span></div>
-                                        <div><span className="text-[10px] font-bold uppercase opacity-60 block">New Weight/Pallet</span><span className="font-mono text-lg font-bold">{(splitTarget.weight / splitCount).toFixed(1)} lbs</span></div>
+                                        <div><span className="text-[10px] font-bold uppercase opacity-60 block">Allocated Units</span><span className={`font-mono text-lg font-bold ${splitAllocations.reduce((a, b) => a + b.count, 0) !== Number(splitTarget.count) ? 'text-red-500' : 'text-emerald-600'}`}>{splitAllocations.reduce((a, b) => a + b.count, 0)} / {splitTarget.count}</span></div>
+                                        <div><span className="text-[10px] font-bold uppercase opacity-60 block">Allocated Weight</span><span className={`font-mono text-lg font-bold ${Math.abs(splitAllocations.reduce((a, b) => a + b.weight, 0) - Number(splitTarget.weight)) > 1 ? 'text-red-500' : 'text-emerald-600'}`}>{splitAllocations.reduce((a, b) => a + b.weight, 0).toFixed(1)} / {splitTarget.weight} lbs</span></div>
                                     </div>
 
                                     <div className="pt-4 flex gap-4">
