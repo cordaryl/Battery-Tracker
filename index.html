@@ -556,22 +556,24 @@
 
             useEffect(() => {
                 if (splitTarget) {
-                    const baseWeight = (splitTarget.weight / splitCount);
-                    const baseCount = Math.floor(splitTarget.count / splitCount);
-                    const allocs = Array(splitCount).fill(0).map(() => ({
-                        count: baseCount,
-                        weight: Number(baseWeight.toFixed(1))
-                    }));
+                    if (splitAllocations.length !== splitCount) {
+                        const baseWeight = (splitTarget.weight / splitCount);
+                        const baseCount = Math.floor(splitTarget.count / splitCount);
+                        const allocs = Array.from({ length: splitCount }, () => ({
+                            count: baseCount,
+                            weight: Number(baseWeight.toFixed(1))
+                        }));
 
-                    const totalBaseCount = baseCount * splitCount;
-                    if (totalBaseCount < splitTarget.count && allocs.length > 0) {
-                        allocs[allocs.length - 1].count += (splitTarget.count - totalBaseCount);
+                        const totalBaseCount = baseCount * splitCount;
+                        if (totalBaseCount < splitTarget.count && allocs.length > 0) {
+                            allocs[allocs.length - 1].count += (splitTarget.count - totalBaseCount);
+                        }
+                        setSplitAllocations(allocs);
                     }
-                    setSplitAllocations(allocs);
                 } else {
                     setSplitAllocations([]);
                 }
-            }, [splitTarget, splitCount]);
+            }, [splitTarget, splitCount, splitAllocations.length]);
 
             // Handlers
             const saveRecord = async (e) => {
@@ -1833,15 +1835,52 @@
                                         <input type="text" value={splitName} onChange={e => setSplitName(e.target.value)} className="w-full p-3 rounded-lg border dark:bg-slate-900" required />
                                     </div>
 
-                                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                                        <p className="text-xs font-bold opacity-60">Individual Allocations</p>
-                                        {splitAllocations.map((alloc, idx) => (
-                                            <div key={idx} className="flex gap-2 items-center bg-slate-50 dark:bg-slate-900 border dark:border-slate-800 p-2 rounded-lg">
-                                                <span className="text-xs font-bold w-20 truncate" title={`${splitName} ${String.fromCharCode(65 + idx)}`}>{splitName} {String.fromCharCode(65 + idx)}</span>
-                                                <input type="number" min="0" value={alloc.count} onChange={e => { const n = [...splitAllocations]; n[idx].count = Number(e.target.value); setSplitAllocations(n); }} className="w-full p-2 text-xs border rounded outline-none bg-white dark:bg-slate-800" placeholder="Units" />
-                                                <input type="number" step="0.1" min="0" value={alloc.weight} onChange={e => { const n = [...splitAllocations]; n[idx].weight = Number(e.target.value); setSplitAllocations(n); }} className="w-full p-2 text-xs border rounded outline-none bg-white dark:bg-slate-800" placeholder="Lbs" />
-                                            </div>
-                                        ))}
+                                    <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <p className="text-xs font-bold opacity-60 uppercase tracking-wider">Individual Allocations</p>
+                                            <p className="text-[10px] opacity-40 font-mono italic">Unit: {(splitTarget.weight / splitTarget.count).toFixed(3)} lbs</p>
+                                        </div>
+                                        {splitAllocations.map((alloc, idx) => {
+                                            const unitWeight = splitTarget.weight / splitTarget.count;
+
+                                            const balance = (type) => {
+                                                const n = [...splitAllocations];
+                                                const currentSum = n.reduce((a, b, i) => i === idx ? a : a + Number(b[type] || 0), 0);
+                                                const target = Number(splitTarget[type] || 0);
+                                                const diff = Math.max(0, target - currentSum);
+                                                n[idx] = { ...n[idx], [type]: type === 'weight' ? Number(diff.toFixed(1)) : Math.floor(diff) };
+                                                setSplitAllocations(n);
+                                            };
+
+                                            return (
+                                                <div key={idx} className="flex gap-2 items-center bg-slate-50 dark:bg-slate-900 border dark:border-slate-800 p-2 rounded-lg group">
+                                                    <span className="text-xs font-bold w-12 flex-shrink-0" title={`${splitName} ${String.fromCharCode(65 + idx)}`}>{String.fromCharCode(65 + idx)}</span>
+
+                                                    <div className="flex-1 relative flex items-center">
+                                                        <input type="number" min="0" value={alloc.count}
+                                                            onChange={e => {
+                                                                const n = [...splitAllocations];
+                                                                const count = Number(e.target.value);
+                                                                n[idx] = { ...n[idx], count, weight: Number((count * unitWeight).toFixed(1)) };
+                                                                setSplitAllocations(n);
+                                                            }}
+                                                            className="w-full p-2 pr-6 text-xs border rounded outline-none bg-white dark:bg-slate-800" placeholder="Qty" />
+                                                        <button type="button" onClick={() => balance('count')} className="absolute right-1 text-purple-400 hover:text-purple-600 font-bold text-xs p-1" title="Balance Qty">=</button>
+                                                    </div>
+
+                                                    <div className="flex-1 relative flex items-center">
+                                                        <input type="number" step="0.1" min="0" value={alloc.weight}
+                                                            onChange={e => {
+                                                                const n = [...splitAllocations];
+                                                                n[idx] = { ...n[idx], weight: Number(e.target.value) };
+                                                                setSplitAllocations(n);
+                                                            }}
+                                                            className="w-full p-2 pr-6 text-xs border rounded outline-none bg-white dark:bg-slate-800" placeholder="Lbs" />
+                                                        <button type="button" onClick={() => balance('weight')} className="absolute right-1 text-purple-400 hover:text-purple-600 font-bold text-xs p-1" title="Balance Weight">=</button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4 bg-purple-50 dark:bg-purple-900/20 p-3 rounded border border-purple-100 dark:border-purple-800">
