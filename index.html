@@ -314,13 +314,28 @@
             const [expandedLibFolders, setExpandedLibFolders] = useState(new Set());
             const [expandedUpsFolders, setExpandedUpsFolders] = useState(new Set());
             const [selectedLogIds, setSelectedLogIds] = useState(new Set());
+            const [expandedLogs, setExpandedLogs] = useState(new Set()); // For expanding Dashboard rows
+            const [showDangerZone, setShowDangerZone] = useState(false); // For showing Danger Zone buttons
 
             const [newLibData, setNewLibData] = useState({ id: null, manufacturer: '', model: '', type: 'Lead-Acid', weight: '', ah: '', life: '' });
             const [newUpsData, setNewUpsData] = useState({ id: null, make: '', family: '', model: '', type: '', acV: '', dcV: '' });
 
+            // BOL State
+            const [showBolModal, setShowBolModal] = useState(false);
+            const [bolItems, setBolItems] = useState([]);
+            const [bolDriver, setBolDriver] = useState('');
+            const sigCanvasRef = useRef(null);
+            const [isDrawing, setIsDrawing] = useState(false);
+            const [billsOfLading, setBillsOfLading] = useState([]);
+
             const [suggestions, setSuggestions] = useState([]);
             const [upsSuggestions, setUpsSuggestions] = useState([]);
             const [appSettings, setAppSettings] = useState({ companyName: 'BatteryCycle Track', logoUrl: '', themeColor: 'emerald', fontStyle: 'font-sans', showProtocols: true, dynamicReports: false, showDates: true, reportLogo: false, invertLogoPrint: false, reportUseCustomerName: false });
+
+            // Split Bulk Entry State
+            const [splitTarget, setSplitTarget] = useState(null);
+            const [splitCount, setSplitCount] = useState(2);
+            const [splitName, setSplitName] = useState('Pallet');
 
             const [editingId, setEditingId] = useState(null);
             const [formData, setFormData] = useState({
@@ -335,8 +350,18 @@
             const [showChangeLog, setShowChangeLog] = useState(false);
             const [feedbackTab, setFeedbackTab] = useState(null); // 'bug' | 'feature' | 'bugManager' | 'featureManager'
 
-            const APP_VERSION = 'v1.15.0';
+            const APP_VERSION = 'v1.16.0';
             const CHANGELOG = [
+                {
+                    version: '1.16.0',
+                    date: new Date().toISOString().split('T')[0],
+                    changes: [
+                        'Added bulk entry splitting (Palletization).',
+                        'Added signable Bills of Lading (BOL) generation.',
+                        'Added interactive expandable dashboard detail cards.',
+                        'Organized extreme actions into a safe Danger Zone submenu.'
+                    ]
+                },
                 {
                     version: '1.15.0',
                     date: '2026-02-03',
@@ -498,10 +523,11 @@
 
                 const unsubBugs = onSnapshot(collection(db, 'bug_reports'), s => setBugReports(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))));
                 const unsubFeats = onSnapshot(collection(db, 'feature_requests'), s => setFeatureRequests(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))));
+                const unsubBols = onSnapshot(collection(db, 'bills_of_lading'), s => setBillsOfLading(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))));
 
                 getDoc(doc(db, 'settings', 'global_config')).then(s => s.exists() && setAppSettings(prev => ({ ...prev, ...s.data() })));
                 setLoading(false);
-                return () => { unsubLogs(); unsubReports(); unsubLib(); unsubUpsLib(); unsubSrc(); unsubBugs(); unsubFeats(); };
+                return () => { unsubLogs(); unsubReports(); unsubLib(); unsubUpsLib(); unsubSrc(); unsubBugs(); unsubFeats(); unsubBols(); };
             }, [user]);
 
             useEffect(() => {
@@ -828,6 +854,136 @@
                 await deleteDoc(doc(db, col, id));
             };
 
+            const splitLogEntry = async (e) => {
+                e.preventDefault();
+                if (!splitTarget || splitCount < 2) return;
+
+                const batch = writeBatch(db);
+                const originalId = splitTarget.id;
+
+                const newTotalWeight = Number((splitTarget.weight / splitCount).toFixed(1));
+                const newUnitCount = Math.floor(splitTarget.count / splitCount);
+
+                const getLabel = (idx) => splitName + ' ' + String.fromCharCode(65 + idx);
+
+                for (let i = 0; i < splitCount; i++) {
+                    const newRef = doc(collection(db, 'recycling_logs'));
+                    const newData = {
+                        ...splitTarget,
+                        weight: newTotalWeight,
+                        count: newUnitCount,
+                        location: getLabel(i),
+                        createdAt: serverTimestamp()
+                    };
+                    delete newData.id;
+                    batch.set(newRef, newData);
+                }
+
+                const origRef = doc(db, 'recycling_logs', originalId);
+                batch.delete(origRef);
+
+                try {
+                    await batch.commit();
+                    alert(`Split into ${splitCount} new entries successfully.`);
+                    setSplitTarget(null);
+                    setExpandedLogs(new Set());
+                } catch (error) {
+                    console.error("Error splitting:", error);
+                    alert("Failed to split entry.");
+                }
+            };
+
+            // BOL & Signature Logic
+            const openBolModal = () => {
+                const items = (activeTab === 'archives' ? archivedLogs : activeLogs).filter(l => selectedLogIds.has(l.id));
+                if (items.length === 0) return;
+                setBolItems(items);
+                setBolDriver('');
+                setShowBolModal(true);
+            };
+
+            const startDrawing = (e) => {
+                e.preventDefault(); // Prevent touch scrolling
+                const canvas = sigCanvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                ctx.beginPath();
+                ctx.moveTo(clientX - rect.left, clientY - rect.top);
+                setIsDrawing(true);
+            };
+
+            const draw = (e) => {
+                e.preventDefault(); // Prevent touch scrolling
+                if (!isDrawing) return;
+                const canvas = sigCanvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                ctx.lineTo(clientX - rect.left, clientY - rect.top);
+                ctx.stroke();
+            };
+
+            const stopDrawing = (e) => {
+                if (e) e.preventDefault();
+                setIsDrawing(false);
+            };
+
+            const clearSignature = () => {
+                const canvas = sigCanvasRef.current;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            };
+
+            const saveBillOfLading = async () => {
+                if (!bolDriver) return alert("Driver name required.");
+                const canvas = sigCanvasRef.current;
+
+                // Check if canvas is actually drawn on (simple heuristic: are there any non-transparent pixels)
+                const ctx = canvas.getContext('2d');
+                const pixelBuffer = new Uint32Array(ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer);
+                const hasPixels = pixelBuffer.some(color => color !== 0);
+                if (!hasPixels) return alert("Signature required.");
+
+                const signatureDataUrl = canvas.toDataURL('image/png');
+                const totalWeight = bolItems.reduce((acc, i) => acc + Number(i.weight || 0), 0);
+                const totalUnits = bolItems.reduce((acc, i) => acc + Number(i.count || 0), 0);
+
+                const bolData = {
+                    dateStr: new Date().toISOString().split('T')[0],
+                    driver: bolDriver,
+                    signature: signatureDataUrl,
+                    totalWeight,
+                    totalUnits,
+                    items: bolItems.map(i => ({ manufacturer: i.manufacturer, model: i.batteryModel, weight: i.weight, count: i.count, location: i.location })),
+                    createdAt: serverTimestamp(),
+                    user: user.uid || 'anon'
+                };
+
+                try {
+                    const batch = writeBatch(db);
+                    // 1. Create BOL record
+                    const bolRef = doc(collection(db, 'bills_of_lading'));
+                    batch.set(bolRef, bolData);
+
+                    // 2. Mark items as Bol Assigned & Archive them
+                    bolItems.forEach(item => {
+                        const itemRef = doc(db, 'recycling_logs', item.id);
+                        batch.update(itemRef, { bolAssigned: bolRef.id, archived: true });
+                    });
+
+                    await batch.commit();
+                    setShowBolModal(false);
+                    setSelectedLogIds(new Set());
+                    alert("Bill of Lading generated and items archived.");
+                } catch (e) {
+                    console.error("BOL save error:", e);
+                    alert("Failed to save Bill of Lading.");
+                }
+            };
+
             if (loading) return <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-400"><Loader2 className="animate-spin mr-2" /> Loading...</div>;
 
             // --- PRINT REPORT ---
@@ -992,6 +1148,11 @@
                                                 <div className="flex gap-2">
                                                     <button type="button" onClick={groupArchivedItems} disabled={selectedLogIds.size === 0} className={`flex items-center text-xs px-3 py-1.5 rounded font-bold text-white ${selectedLogIds.size > 0 ? theme.primary : 'bg-slate-400'}`}><Briefcase size={14} className="mr-1" /> Group Archive</button>
                                                     <button type="button" onClick={() => setPrintMode(true)} className="flex items-center text-xs bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded hover:opacity-80"><Printer size={14} className="mr-1" /> Print</button>
+                                                    {selectedLogIds.size > 0 && (
+                                                        <button type="button" onClick={openBolModal} className="flex-shrink-0 px-3 py-1.5 text-xs font-bold rounded-lg transition-all shadow-md bg-purple-600 text-white hover:bg-purple-700 flex items-center">
+                                                            <FileText size={14} className="mr-1" /> Create BOL
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="overflow-x-auto max-h-[600px]">
@@ -999,13 +1160,41 @@
                                                     <thead className="bg-slate-50 dark:bg-slate-900/50 text-xs uppercase font-bold opacity-70 sticky top-0"><tr><th className="p-4 w-10"><button type="button" onClick={() => setSelectedLogIds(selectedLogIds.size === activeLogs.length ? new Set() : new Set(activeLogs.map(l => l.id)))}>{selectedLogIds.size === activeLogs.length && activeLogs.length > 0 ? <CheckSquare size={16} /> : <Square size={16} />}</button></th><th>Source / Model</th>{appSettings.showDates && <th>Dates</th>}<th className="text-right">Unit</th><th className="text-right">Qty</th><th className="text-right">Total</th><th className="p-4 text-center">Act</th></tr></thead>
                                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                                         {activeLogs.map((l, idx) => (
-                                                            <tr key={l.id} className={`hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800/50'}`}>
-                                                                <td className="p-4"><button type="button" onClick={() => setSelectedLogIds(p => { const n = new Set(p); n.has(l.id) ? n.delete(l.id) : n.add(l.id); return n; })}>{selectedLogIds.has(l.id) ? <CheckSquare size={16} className="text-emerald-500" /> : <Square size={16} className="text-slate-300" />}</button></td>
-                                                                <td><div className="font-bold flex items-center gap-2">{appSettings.showDates && <StatusIcon date={l.expiryDate} />} {l.location}</div><div className="text-xs opacity-60 ml-5">{l.manufacturer} {l.batteryModel}</div></td>
-                                                                {appSettings.showDates && <td className="text-[10px] opacity-70">In: {formatDate(l.installDate) || '-'}<br />Ex: {formatDate(l.expiryDate) || '-'}</td>}
-                                                                <td className="text-right opacity-70">{l.unitWeight}</td><td className="text-right font-bold">{l.count}</td><td className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">{l.weight}</td>
-                                                                <td className="p-4 text-center flex justify-center gap-2"><button type="button" onClick={() => { setEditingId(l.id); setFormData(l); setActiveTab('log'); }} className="hover:text-blue-500"><Edit2 size={16} /></button><button type="button" onClick={() => toggleArchive(l.id, false)} className="hover:text-amber-500"><Archive size={16} /></button></td>
-                                                            </tr>
+                                                            <React.Fragment key={l.id}>
+                                                                <tr className={`hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800/50'} cursor-pointer`} onClick={() => setExpandedLogs(p => { const n = new Set(p); n.has(l.id) ? n.delete(l.id) : n.add(l.id); return n; })}>
+                                                                    <td className="p-4" onClick={(e) => e.stopPropagation()}><button type="button" onClick={() => setSelectedLogIds(p => { const n = new Set(p); n.has(l.id) ? n.delete(l.id) : n.add(l.id); return n; })}>{selectedLogIds.has(l.id) ? <CheckSquare size={16} className="text-emerald-500" /> : <Square size={16} className="text-slate-300" />}</button></td>
+                                                                    <td><div className="font-bold flex items-center gap-2">{appSettings.showDates && <StatusIcon date={l.expiryDate} />} {l.location}</div><div className="text-xs opacity-60 ml-5">{l.manufacturer} {l.batteryModel}</div></td>
+                                                                    {appSettings.showDates && <td className="text-[10px] opacity-70">In: {formatDate(l.installDate) || '-'}<br />Ex: {formatDate(l.expiryDate) || '-'}</td>}
+                                                                    <td className="text-right opacity-70">{l.unitWeight}</td><td className="text-right font-bold">{l.count}</td><td className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">{l.weight}</td>
+                                                                    <td className="p-4 text-center flex justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                                                        <button type="button" onClick={() => setExpandedLogs(p => { const n = new Set(p); n.has(l.id) ? n.delete(l.id) : n.add(l.id); return n; })} className="hover:text-blue-500"><ChevronDown size={16} className={`transform transition-transform ${expandedLogs.has(l.id) ? 'rotate-180' : ''}`} /></button>
+                                                                    </td>
+                                                                </tr>
+                                                                {expandedLogs.has(l.id) && (
+                                                                    <tr className="bg-slate-50 dark:bg-slate-900/40 border-b border-t dark:border-slate-800/50">
+                                                                        <td colSpan={appSettings.showDates ? "7" : "6"} className="p-4">
+                                                                            <div className="flex flex-col md:flex-row gap-4 justify-between items-start outline outline-1 outline-slate-200 dark:outline-slate-700 bg-white dark:bg-slate-800 p-4 rounded-lg">
+                                                                                <div className="space-y-2 flex-1">
+                                                                                    <h4 className="font-bold text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-2"><MapPin size={14} /> {l.location} details</h4>
+                                                                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                                                                                        <div><span className="opacity-50 block font-bold uppercase">Chemistry</span>{l.type || 'Unknown'} {l.lithiumType && `(${l.lithiumType})`}</div>
+                                                                                        <div><span className="opacity-50 block font-bold uppercase">Capacity</span>{l.ampHours ? `${l.ampHours} Ah` : '-'}</div>
+                                                                                        <div><span className="opacity-50 block font-bold uppercase">Date Code</span>{l.dateCode || '-'}</div>
+                                                                                        <div><span className="opacity-50 block font-bold uppercase">Maint Date</span>{l.installDate || '-'}</div>
+                                                                                        {l.site && <div className="col-span-2"><span className="opacity-50 block font-bold uppercase">Associated Equipment</span>{l.site} {l.building && `> ${l.building}`} {l.room && `> ${l.room}`} {l.upsSerial && `(UPS: ${l.upsSerial})`}</div>}
+                                                                                        {l.notes && <div className="col-span-4 mt-2"><span className="opacity-50 block font-bold uppercase">Notes</span><p className="whitespace-pre-wrap">{l.notes}</p></div>}
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="flex flex-row md:flex-col gap-2 w-full md:w-auto shrink-0 border-t md:border-t-0 md:border-l dark:border-slate-700 pt-4 md:pt-0 md:pl-4">
+                                                                                    <button type="button" onClick={() => { setEditingId(l.id); setFormData(l); setActiveTab('log'); }} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded hover:bg-blue-100"><Edit2 size={14} /> Edit Entry</button>
+                                                                                    <button type="button" onClick={() => { setSplitTarget(l); setSplitName(l.location || 'Pallet'); setSplitCount(2); }} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 rounded hover:bg-purple-100"><Layers size={14} /> Split Bulk Item</button>
+                                                                                    <button type="button" onClick={() => toggleArchive(l.id, false)} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 rounded hover:bg-amber-100"><Archive size={14} /> Archive</button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                )}
+                                                            </React.Fragment>
                                                         ))}
                                                     </tbody>
                                                 </table>
@@ -1249,6 +1438,7 @@
                                                     <div className="flex bg-slate-100 dark:bg-slate-800 rounded p-0.5">
                                                         <button type="button" onClick={() => setArchiveSubTab('recycling')} className={`px-3 py-1 text-xs font-bold rounded transition-all ${archiveSubTab === 'recycling' ? 'bg-white shadow text-black' : 'text-slate-400'}`}>Recycle Logs</button>
                                                         <button type="button" onClick={() => setArchiveSubTab('reports')} className={`px-3 py-1 text-xs font-bold rounded transition-all ${archiveSubTab === 'reports' ? 'bg-white shadow text-black' : 'text-slate-400'}`}>Service Reports</button>
+                                                        <button type="button" onClick={() => setArchiveSubTab('bol')} className={`px-3 py-1 text-xs font-bold rounded transition-all ${archiveSubTab === 'bol' ? 'bg-white shadow text-black' : 'text-slate-400'}`}>Bills of Lading</button>
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2 items-center">
@@ -1265,6 +1455,7 @@
                                             {archiveSubTab === 'recycling' ? (
                                                 <>
                                                     <div className="flex gap-2 mb-4">
+                                                        {selectedLogIds.size > 0 && <button type="button" onClick={openBolModal} className="text-xs px-2 py-1 bg-purple-100 text-purple-700 font-bold rounded hover:bg-purple-200 shadow-sm">Create BOL</button>}
                                                         <button type="button" onClick={groupArchivedItems} disabled={selectedLogIds.size === 0} className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50">Group Selected</button>
                                                         <button type="button" onClick={batchRestore} disabled={selectedLogIds.size === 0} className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 disabled:opacity-50">Restore</button>
                                                         <button type="button" onClick={batchDelete} disabled={selectedLogIds.size === 0} className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 disabled:opacity-50">Delete</button>
@@ -1327,6 +1518,44 @@
                                                     {serviceReports.length === 0 && <p className="text-center text-slate-400 py-8 italic">No service reports saved.</p>}
                                                 </div>
                                             )}
+
+                                            {archiveSubTab === 'bol' && (
+                                                <div className="space-y-4">
+                                                    {billsOfLading.map(b => (
+                                                        <div key={b.id} className="border dark:border-slate-700 rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                                            <div className="flex justify-between items-start mb-4">
+                                                                <div>
+                                                                    <h3 className="font-bold text-purple-600 flex items-center gap-2"><FileText size={16} /> Bill of Lading</h3>
+                                                                    <p className="text-xs text-slate-500 mt-1">{b.dateStr} • {b.items.length} lots</p>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className="font-mono font-bold text-lg">{b.totalWeight} lbs</p>
+                                                                    <p className="text-xs opacity-60">{b.totalUnits} Units Total</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t dark:border-slate-700 pt-4">
+                                                                <div>
+                                                                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Manifest Items</p>
+                                                                    <div className="max-h-32 overflow-y-auto pr-2">
+                                                                        {b.items.map((i, idx) => (
+                                                                            <div key={idx} className="flex justify-between text-xs py-1 border-b border-slate-100 dark:border-slate-800/50 last:border-0">
+                                                                                <span><span className="opacity-50">{i.location}:</span> {i.manufacturer} {i.model}</span>
+                                                                                <span className="font-mono">{i.count}x / {i.weight}lb</span>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex flex-col items-end">
+                                                                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 w-full text-right">Driver / Receiver</p>
+                                                                    <h4 className="font-bold">{b.driver}</h4>
+                                                                    {b.signature && <img src={b.signature} alt="Signature" className="h-16 w-auto mt-2 object-contain bg-white rounded border border-slate-200" />}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    {billsOfLading.length === 0 && <p className="text-center text-slate-400 py-8 italic">No Bills of Lading saved.</p>}
+                                                </div>
+                                            )}
                                         </Card>
                                     </div>
                                 )}
@@ -1370,12 +1599,18 @@
                                         <button onClick={saveSettings} className={`px-8 py-3 rounded-xl font-bold text-white shadow-lg transition-transform hover:scale-105 ${theme.primary}`}>Save All Changes</button>
 
                                         <div className="mt-8 pt-6 border-t dark:border-slate-700">
-                                            <h3 className="font-bold text-red-500 text-sm uppercase mb-4 flex items-center"><AlertTriangle className="mr-2" size={16} /> Danger Zone</h3>
-                                            <div className="flex gap-4">
-                                                <button type="button" onClick={clearRecycleLogs} className="px-4 py-2 border border-red-500 text-red-500 rounded text-xs font-bold hover:bg-red-50 dark:hover:bg-red-900/20">Clear Recycling Logs</button>
-                                                <button type="button" onClick={clearServiceReports} className="px-4 py-2 border border-red-500 text-red-500 rounded text-xs font-bold hover:bg-red-50 dark:hover:bg-red-900/20">Clear Service Reports</button>
-                                                <button type="button" onClick={purgeLegacyReports} className="px-4 py-2 bg-red-100 text-red-700 border border-red-500 rounded text-xs font-bold hover:bg-red-200">Purge Legacy Report Logs</button>
-                                            </div>
+                                            <button type="button" onClick={() => setShowDangerZone(!showDangerZone)} className="w-full flex items-center justify-between font-bold text-red-500 text-sm uppercase mb-4 p-3 rounded hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
+                                                <span className="flex items-center"><AlertTriangle className="mr-2" size={16} /> Danger Zone</span>
+                                                <ChevronDown size={16} className={`transform transition-transform ${showDangerZone ? 'rotate-180' : ''}`} />
+                                            </button>
+
+                                            {showDangerZone && (
+                                                <div className="flex flex-wrap gap-4 p-4 border border-red-200 dark:border-red-900/50 rounded-lg bg-red-50/50 dark:bg-red-900/10">
+                                                    <button type="button" onClick={clearRecycleLogs} className="px-4 py-2 bg-white dark:bg-slate-800 border border-red-500 text-red-500 rounded text-xs font-bold hover:bg-red-50 dark:hover:bg-red-900/50 transition-colors">Clear Recycling Logs</button>
+                                                    <button type="button" onClick={clearServiceReports} className="px-4 py-2 bg-white dark:bg-slate-800 border border-red-500 text-red-500 rounded text-xs font-bold hover:bg-red-50 dark:hover:bg-red-900/50 transition-colors">Clear Service Reports</button>
+                                                    <button type="button" onClick={purgeLegacyReports} className="px-4 py-2 bg-red-500 text-white rounded text-xs font-bold hover:bg-red-600 shadow-md transition-colors">Purge Legacy Report Logs</button>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="mt-12 pt-8 border-t dark:border-slate-700 text-center">
@@ -1500,6 +1735,106 @@
                                             {(feedbackTab === 'bugManager' ? bugReports : featureRequests).length === 0 && <p className="text-center opacity-50 py-10">No entries yet.</p>}
                                         </div>
                                     )}
+                                </div>
+                            </Card>
+                        </div>
+                    )}
+
+                    {/* SPLIT MODAL */}
+                    {splitTarget && (
+                        <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+                            <Card className="max-w-md w-full flex flex-col">
+                                <div className="p-4 border-b flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+                                    <h3 className="font-bold flex items-center text-purple-600"><Layers size={18} className="mr-2" /> Split Bulk Entry</h3>
+                                    <button onClick={() => setSplitTarget(null)}><X /></button>
+                                </div>
+                                <form onSubmit={splitLogEntry} className="p-6 space-y-4">
+                                    <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded text-xs opacity-70 mb-4">
+                                        <p>Original: <strong>{splitTarget.count}</strong> units, <strong>{splitTarget.weight}</strong> lbs</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold block mb-1">Number of Splits (Pallets)</label>
+                                        <input type="number" min="2" max="26" value={splitCount} onChange={e => setSplitCount(Number(e.target.value))} className="w-full p-3 rounded-lg border dark:bg-slate-900" required />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold block mb-1">Naming Base (e.g. Pallet)</label>
+                                        <p className="text-[10px] opacity-60 mb-2">Will result in: <strong>{splitName} A</strong>, <strong>{splitName} B</strong>, etc.</p>
+                                        <input type="text" value={splitName} onChange={e => setSplitName(e.target.value)} className="w-full p-3 rounded-lg border dark:bg-slate-900" required />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4 bg-purple-50 dark:bg-purple-900/20 p-3 rounded border border-purple-100 dark:border-purple-800">
+                                        <div><span className="text-[10px] font-bold uppercase opacity-60 block">New Units/Pallet</span><span className="font-mono text-lg font-bold">{Math.floor(splitTarget.count / splitCount)}</span></div>
+                                        <div><span className="text-[10px] font-bold uppercase opacity-60 block">New Weight/Pallet</span><span className="font-mono text-lg font-bold">{(splitTarget.weight / splitCount).toFixed(1)} lbs</span></div>
+                                    </div>
+
+                                    <div className="pt-4 flex gap-4">
+                                        <button type="button" onClick={() => setSplitTarget(null)} className="flex-1 py-3 text-xs font-bold border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">Cancel</button>
+                                        <button type="submit" className="flex-1 py-3 bg-purple-600 text-white rounded-lg font-bold shadow-lg hover:bg-purple-700">Confirm Split</button>
+                                    </div>
+                                </form>
+                            </Card>
+                        </div>
+                    )}
+
+                    {/* BOL SIGNATURE MODAL */}
+                    {showBolModal && (
+                        <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+                            <Card className="max-w-2xl w-full flex flex-col max-h-[90vh]">
+                                <div className="p-4 border-b flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+                                    <h3 className="font-bold flex items-center text-purple-600"><FileText size={18} className="mr-2" /> Generate Bill of Lading</h3>
+                                    <button onClick={() => setShowBolModal(false)}><X /></button>
+                                </div>
+                                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                                    <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-lg">
+                                        <h4 className="font-bold text-xs uppercase mb-3 opacity-60">Manifest Summary ({bolItems.length} Lots)</h4>
+                                        <div className="max-h-40 overflow-y-auto space-y-1 mb-4">
+                                            {bolItems.map((i, idx) => (
+                                                <div key={idx} className="flex justify-between text-xs border-b border-slate-200 dark:border-slate-700 pb-1 pb-1">
+                                                    <span>{i.location}: {i.manufacturer} {i.batteryModel}</span>
+                                                    <span className="font-mono font-bold">{i.count} units / {i.weight} lbs</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="flex justify-between font-bold border-t border-slate-300 dark:border-slate-600 pt-2">
+                                            <span>TOTALS</span>
+                                            <span className="font-mono text-purple-600 dark:text-purple-400">{bolItems.reduce((a, b) => a + Number(b.count || 0), 0)} units / {bolItems.reduce((a, b) => a + Number(b.weight || 0), 0)} lbs</span>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold block mb-1">Driver / Receiver Name</label>
+                                        <input type="text" value={bolDriver} onChange={e => setBolDriver(e.target.value)} className="w-full p-3 rounded-lg border dark:bg-slate-900" placeholder="Print Name..." required />
+                                    </div>
+
+                                    <div>
+                                        <div className="flex justify-between items-end mb-1">
+                                            <label className="text-xs font-bold block">Signature</label>
+                                            <button type="button" onClick={clearSignature} className="text-[10px] text-blue-500 hover:underline">Clear Signature</button>
+                                        </div>
+                                        <div className="border-2 border-slate-300 dark:border-slate-600 rounded-lg overflow-hidden bg-white w-full h-40 touch-none">
+                                            <canvas
+                                                ref={sigCanvasRef}
+                                                width={600}
+                                                height={160}
+                                                className="w-full h-full cursor-crosshair"
+                                                onMouseDown={startDrawing}
+                                                onMouseMove={draw}
+                                                onMouseUp={stopDrawing}
+                                                onMouseOut={stopDrawing}
+                                                onTouchStart={startDrawing}
+                                                onTouchMove={draw}
+                                                onTouchEnd={stopDrawing}
+                                            />
+                                        </div>
+                                        <p className="text-[10px] opacity-50 mt-1 text-center italic">Sign directly on the device screen.</p>
+                                    </div>
+
+                                    <div className="pt-2 flex gap-4">
+                                        <button type="button" onClick={() => setShowBolModal(false)} className="flex-1 py-3 text-xs font-bold border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">Cancel</button>
+                                        <button type="button" onClick={saveBillOfLading} className="flex-1 py-3 bg-purple-600 text-white rounded-lg font-bold shadow-lg hover:bg-purple-700">Save & Lock BOL</button>
+                                    </div>
                                 </div>
                             </Card>
                         </div>
