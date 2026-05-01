@@ -1877,8 +1877,8 @@
                             </div>
 
                             {/* RIGHT SIDEBAR */}
-                            <div className="space-y-6">
-                                {appSettings.showProtocols && (
+                            {appSettings.showProtocols && (
+                                <div className="space-y-6">
                                     <Card className="p-6 bg-slate-900 text-slate-100 border-none relative overflow-hidden group">
                                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><AlertTriangle size={80} /></div>
                                         <h3 className="font-bold mb-4 flex items-center border-b border-slate-700 pb-3"><ShieldCheck className="mr-2 text-emerald-400" size={18} /> Safety Protocols</h3>
@@ -1888,8 +1888,8 @@
                                             <li className="flex gap-3 items-start"><Zap size={14} className="mt-0.5 shrink-0 text-slate-400" /><span><strong>Lithium:</strong> Tape terminals. Fire risk.</span></li>
                                         </ul>
                                     </Card>
-                                )}
-                            </div>
+                                </div>
+                            )}
 
                         </div>
                     </div>
