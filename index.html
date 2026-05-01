@@ -373,7 +373,8 @@
                         'Added Location Recovery Tool to fix previously overwritten locations.',
                         'Original source/customer data is now preserved when palletizing.',
                         'Move selected entries to existing pallet groups from toolbar or expanded view.',
-                        'Expanded view visually ties to pallet group with indigo accent and badge.'
+                        'Expanded view visually ties to pallet group with indigo accent and badge.',
+                        'BOL manifest shows pallet groups as line items; signed BOLs have expandable pallet detail.'
                     ]
                 },
                 {
@@ -1243,7 +1244,7 @@
                     signature: signatureDataUrl,
                     totalWeight,
                     totalUnits,
-                    items: bolItems.map(i => ({ manufacturer: i.manufacturer, model: i.batteryModel, weight: i.weight, unitWeight: i.unitWeight, count: i.count, location: i.location })),
+                    items: bolItems.map(i => ({ manufacturer: i.manufacturer, model: i.batteryModel, weight: i.weight, unitWeight: i.unitWeight, count: i.count, location: i.location, palletGroup: i.palletGroup || null })),
                     createdAt: serverTimestamp(),
                     user: user.uid || 'anon',
                     type: 'bol'
@@ -1995,13 +1996,43 @@
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t dark:border-slate-700 pt-4">
                                                                 <div>
                                                                     <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Manifest Items</p>
-                                                                    <div className="max-h-32 overflow-y-auto pr-2">
-                                                                        {b.items.map((i, idx) => (
-                                                                            <div key={idx} className="flex justify-between text-xs py-1 border-b border-slate-100 dark:border-slate-800/50 last:border-0">
-                                                                                <span><span className="opacity-50">{i.location}:</span> {i.manufacturer} {i.model}</span>
-                                                                                <span className="font-mono">{i.count}x / {i.weight}lb</span>
-                                                                            </div>
-                                                                        ))}
+                                                                    <div className="max-h-48 overflow-y-auto pr-2">
+                                                                        {(() => {
+                                                                            const palletGrouped = {};
+                                                                            const ungrouped = [];
+                                                                            b.items.forEach(i => {
+                                                                                if (i.palletGroup) {
+                                                                                    if (!palletGrouped[i.palletGroup]) palletGrouped[i.palletGroup] = [];
+                                                                                    palletGrouped[i.palletGroup].push(i);
+                                                                                } else {
+                                                                                    ungrouped.push(i);
+                                                                                }
+                                                                            });
+                                                                            return (
+                                                                                <>
+                                                                                    {Object.entries(palletGrouped).map(([name, items]) => (
+                                                                                        <div key={name} className="mb-2">
+                                                                                            <button type="button" onClick={() => setExpandedFolders(p => { const n = new Set(p); n.has(`bol-${b.id}-${name}`) ? n.delete(`bol-${b.id}-${name}`) : n.add(`bol-${b.id}-${name}`); return n; })} className="w-full flex justify-between items-center text-xs py-1.5 px-2 bg-indigo-50 dark:bg-indigo-900/20 rounded font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors">
+                                                                                                <span className="flex items-center gap-1.5"><Package size={12} /> {name}</span>
+                                                                                                <span className="font-mono text-[10px]">{items.reduce((a, x) => a + Number(x.count || 0), 0)}x / {items.reduce((a, x) => a + Number(x.weight || 0), 0)}lb</span>
+                                                                                            </button>
+                                                                                            {expandedFolders.has(`bol-${b.id}-${name}`) && items.map((i, idx) => (
+                                                                                                <div key={idx} className="flex justify-between text-xs py-1 pl-6 border-b border-slate-100 dark:border-slate-800/50 last:border-0 border-l-2 border-l-indigo-200 dark:border-l-indigo-800 ml-2">
+                                                                                                    <span><span className="opacity-50">{i.location}:</span> {i.manufacturer} {i.model}</span>
+                                                                                                    <span className="font-mono">{i.count}x / {i.weight}lb</span>
+                                                                                                </div>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    ))}
+                                                                                    {ungrouped.map((i, idx) => (
+                                                                                        <div key={idx} className="flex justify-between text-xs py-1 border-b border-slate-100 dark:border-slate-800/50 last:border-0">
+                                                                                            <span><span className="opacity-50">{i.location}:</span> {i.manufacturer} {i.model}</span>
+                                                                                            <span className="font-mono">{i.count}x / {i.weight}lb</span>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </>
+                                                                            );
+                                                                        })()}
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex flex-col items-end">
@@ -2301,12 +2332,34 @@
                                     <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-lg">
                                         <h4 className="font-bold text-xs uppercase mb-3 opacity-60">Manifest Summary ({bolItems.length} Lots)</h4>
                                         <div className="max-h-40 overflow-y-auto space-y-1 mb-4">
-                                            {bolItems.map((i, idx) => (
-                                                <div key={idx} className="flex justify-between text-xs border-b border-slate-200 dark:border-slate-700 pb-1 pb-1">
-                                                    <span>{i.location}: {i.manufacturer} {i.batteryModel}</span>
-                                                    <span className="font-mono font-bold">{i.count} units / {i.weight} lbs</span>
-                                                </div>
-                                            ))}
+                                            {(() => {
+                                                const palletGrouped = {};
+                                                const ungrouped = [];
+                                                bolItems.forEach(i => {
+                                                    if (i.palletGroup) {
+                                                        if (!palletGrouped[i.palletGroup]) palletGrouped[i.palletGroup] = [];
+                                                        palletGrouped[i.palletGroup].push(i);
+                                                    } else {
+                                                        ungrouped.push(i);
+                                                    }
+                                                });
+                                                return (
+                                                    <>
+                                                        {Object.entries(palletGrouped).map(([name, items]) => (
+                                                            <div key={name} className="flex justify-between text-xs border-b border-slate-200 dark:border-slate-700 pb-1">
+                                                                <span className="flex items-center gap-1.5 font-bold text-indigo-600 dark:text-indigo-400"><Package size={12} /> {name}</span>
+                                                                <span className="font-mono font-bold">{items.reduce((a, b) => a + Number(b.count || 0), 0)} units / {items.reduce((a, b) => a + Number(b.weight || 0), 0)} lbs</span>
+                                                            </div>
+                                                        ))}
+                                                        {ungrouped.map((i, idx) => (
+                                                            <div key={`u-${idx}`} className="flex justify-between text-xs border-b border-slate-200 dark:border-slate-700 pb-1">
+                                                                <span>{i.location}: {i.manufacturer} {i.batteryModel}</span>
+                                                                <span className="font-mono font-bold">{i.count} units / {i.weight} lbs</span>
+                                                            </div>
+                                                        ))}
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                         <div className="flex justify-between font-bold border-t border-slate-300 dark:border-slate-600 pt-2">
                                             <span>TOTALS</span>
