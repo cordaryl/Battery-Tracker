@@ -1354,9 +1354,9 @@
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
-                        <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <div className={`max-w-[1600px] mx-auto grid grid-cols-1 ${appSettings.showProtocols ? 'lg:grid-cols-3 xl:grid-cols-4' : ''} gap-6`}>
 
-                            <div className="lg:col-span-2 xl:col-span-3 space-y-6">
+                            <div className={`${appSettings.showProtocols ? 'lg:col-span-2 xl:col-span-3' : ''} space-y-6`}>
                                 {activeTab === 'dashboard' && (
                                     <>
                                         <div className="grid grid-cols-2 gap-4">
